@@ -15,24 +15,3 @@ extension View {
             .onPreferenceChange(SizePreferenceKey.self, perform: onChange)
     }
 }
-
-@available(iOS 15.0, macOS 10.15, *)
-extension View {
-    func snapshot() -> UIImage {
-        let controller = UIHostingController(rootView: self)
-        let view = controller.view!
-        
-        let targetSize = view.intrinsicContentSize
-        view.bounds = CGRect(origin: .zero, size: targetSize)
-        view.backgroundColor = .clear
-        
-        let renderer = UIGraphicsImageRenderer(size: targetSize)
-        
-        return renderer.image { _ in
-            view.drawHierarchy(in: view.bounds, afterScreenUpdates: true)
-        }
-    }
-}
- 
-
-
