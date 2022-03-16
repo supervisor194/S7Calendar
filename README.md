@@ -6,14 +6,15 @@ the cells to render notifications, meetings, etc.
 
 A basic iOS 15 App
 
-<code>
+```
 import SwiftUI
+
 import S7Calendar
 
 public let cml = CalendarModelLoader.instance
 
 @main
-struct S7CApp: App {
+struct S7CApp: App { 
     
     init() {
       cml.addModel(CalendarModel(MyConfig()))
@@ -28,15 +29,14 @@ struct S7CApp: App {
         }
     }
 }
-</code>
+```
 
 Customized model and cell builders
 
-<code>
+```
 import Foundation
 import SwiftUI
 import S7Calendar
-
 
 class MyCellBuilder : CellBuilder {
     
@@ -205,4 +205,4 @@ struct MyYearlyViewDayCell : View {
         }
     }
 }
-</code>
+```
