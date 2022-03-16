@@ -48,6 +48,8 @@ public class LocalizedDateFormatter1 {
     let dateFormatter = DateFormatter()
     
     init() {
+        let pref = Locale.preferredLanguages[0]
+        dateFormatter.locale = Locale(identifier: pref)
         dateFormatter.setLocalizedDateFormatFromTemplate("EEEE MMMM d, yyyy")
     }
 }
@@ -56,9 +58,9 @@ public let ldf1 = LocalizedDateFormatter1()
 
 @available(iOS 15.0, *)
 public class YMDateFormatter {
-    let dateFormatter = DateFormatter()
-    let calendar = Calendar.current
-    let monthFormatter = DateFormatter()
+    let dateFormatter: DateFormatter
+    let calendar: Calendar
+    let monthFormatter: DateFormatter
     
     let _firstWeekdayAdjustment: Int
     
@@ -69,8 +71,20 @@ public class YMDateFormatter {
     }
     
     init() {
+        let pref = Locale.preferredLanguages[0]
+        let locale = Locale(identifier: pref)
+        dateFormatter = DateFormatter()
+        dateFormatter.locale = locale
         dateFormatter.dateFormat = "yyyy M d"
+        
+        var c = Calendar.current
+        c.locale = locale
+        self.calendar = c
+        
+        monthFormatter = DateFormatter()
+        monthFormatter.locale = locale
         monthFormatter.dateFormat = "MMM"
+        
         _firstWeekdayAdjustment = calendar.firstWeekday - 1
     }
     
