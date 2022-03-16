@@ -50,8 +50,6 @@ public struct WeekView: View {
     }
     
     public var body: some View {
-        let _ = Self._printChanges()
-        
         VStack(spacing: 0) {
             HStack {
                 ForEach( (0...model.dayHeading.count-1), id: \.self) { i in
@@ -77,17 +75,22 @@ public struct WeekView: View {
                         .background(.blue)
                     }
                     .onChange(of: model.selected) { v in
-                        model.setYMD()
-                        let target = model.snap()
-                        withAnimation {
-                            proxy.scrollTo(target, anchor: .leading)
+                        Task.detached {
+                            async let ready = model.waitAndClear()
+                            await ready
+                            await model.setYMD()
+                            async let doSN = model.doScrollSnap(proxy)
+                            await doSN
                         }
                     }
                     .onAppear {
+                        model.initSem()
                         Task.detached {
                             async let doSN = model.doScrollSnap(proxy)
                             await doSN
+                            await model.signal()
                             await model.setupSubscription(proxy)
+                            
                         }
                     }
                 }
@@ -155,6 +158,7 @@ class WeekViewModel : ObservableObject {
     let origin: CurrentValueSubject<CGPoint, Never>
     let originPublisher: AnyPublisher<CGPoint, Never>
     var subscription: AnyCancellable? = nil
+    var sem: DispatchSemaphore? = nil
     
     var tagsByYMD: [String:Int] = [:]
     var tagsById: [Int:String] = [:]
@@ -206,6 +210,21 @@ class WeekViewModel : ObservableObject {
         computeDayLabels(numDays: numDays)
     }
     
+    func initSem() {
+        sem = DispatchSemaphore(value: 0)
+    }
+    
+    func signal() async {
+        sem!.signal()
+    }
+    
+    func waitAndClear() -> Int {
+        if let sem = self.sem {
+            sem.wait()
+            self.sem = nil
+        }
+        return 1
+    }
     
     func addTag(_ ymd: String, _ i:Int) {
         tagsByYMD[ymd] = i
@@ -233,6 +252,7 @@ class WeekViewModel : ObservableObject {
     
     @MainActor
     func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
+        print("running snap on: \(Thread.current)")
         let snapTo = Int(Double(selected-1)/7.0) * 7 + 1
         proxy.scrollTo(snapTo, anchor: .leading)
         return 1
@@ -244,6 +264,7 @@ class WeekViewModel : ObservableObject {
             let target = self.snap()
             self.subscription?.cancel()
             withAnimation {
+                print("running on: \(Thread.current)")
                 proxy.scrollTo(target, anchor: .leading)
             }
             self.setupSubscription(proxy)
@@ -261,7 +282,7 @@ class WeekViewModel : ObservableObject {
             let snapTo = Int(round(Double(f.key-1)/7.0)) * 7 + 1
             return snapTo
         } else {
-            return 1
+            return -1
         }
     }
     
@@ -275,7 +296,9 @@ class WeekViewModel : ObservableObject {
         }
     }
     
+    @MainActor
     func setYMD() {
+        print("setYMD()...\(Thread.current)")
         dayComponent.day = selected - 1
         let selectedDate = ymDateFormatter.addComponents(components: dayComponent, to: firstDay)
         selectedYMD = ymDateFormatter.getYMDForDate(selectedDate)
