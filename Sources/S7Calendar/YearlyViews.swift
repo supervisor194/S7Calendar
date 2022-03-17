@@ -18,6 +18,8 @@ public struct WrappedYearlyView<Content: View> : View {
     }
     
     public var body: some View {
+        let _ = Self._printChanges()
+
         yearlyView
             .onAppear {
                 if let backFromMonths = self.model.backFromMonths {

@@ -76,18 +76,15 @@ public struct WeekView: View {
                     }
                     .onChange(of: model.selected) { v in
                         Task.detached {
-                            async let ready = model.waitAndClear()
-                            await ready
+                            await model.waitAndClear()
                             await model.setYMD()
-                            async let doSN = model.doScrollSnap(proxy)
-                            await doSN
+                            await  model.doScrollSnap(proxy)
                         }
                     }
                     .onAppear {
                         model.initSem()
                         Task.detached {
-                            async let doSN = model.doScrollSnap(proxy)
-                            await doSN
+                            await model.doScrollSnap(proxy)
                             await model.signal()
                             await model.setupSubscription(proxy)
                             
@@ -218,12 +215,11 @@ class WeekViewModel : ObservableObject {
         sem!.signal()
     }
     
-    func waitAndClear() -> Int {
+    func waitAndClear() {
         if let sem = self.sem {
             sem.wait()
             self.sem = nil
         }
-        return 1
     }
     
     func addTag(_ ymd: String, _ i:Int) {
@@ -251,12 +247,20 @@ class WeekViewModel : ObservableObject {
     }
     
     @MainActor
-    func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
+    func doScrollSnap(_ proxy: ScrollViewProxy) async {
         let snapTo = Int(Double(selected-1)/7.0) * 7 + 1
         proxy.scrollTo(snapTo, anchor: .leading)
-        return 1
     }
     
+    /*
+     
+     @MainActor
+     func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
+         let snapTo = Int(Double(selected-1)/7.0) * 7 + 1
+         proxy.scrollTo(snapTo, anchor: .leading)
+         return 1
+     }
+     */
     
     func setupSubscription(_ proxy: ScrollViewProxy) {
         subscription = originPublisher.sink { [unowned self] v in
