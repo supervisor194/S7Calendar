@@ -53,14 +53,12 @@ public struct MonthsView : View {
     
     
     
-    func creatMonthView(_ i: Int) -> MonthView {
+    func createMonthView(_ i: Int) -> MonthView {
         if let v = model.monthView[i] {
             return v
         }
         let v = MonthView(ymd: model.getYMD(i), calendarModel: calendarModel, fontSize: $fontSize)
         model.monthView[i] = v
-        
-        
         return v
     }
     
@@ -70,7 +68,7 @@ public struct MonthsView : View {
                 ScrollView() {
                     LazyVStack(spacing: 20) {
                         ForEach(1..<model.numMonths) { i  in
-                            creatMonthView(i)
+                            createMonthView(i)
                                 .id(i)
                                 .onAppear {
                                     model.visibleItems[Int(i)] = true
@@ -165,7 +163,6 @@ public class MonthsViewModel : ObservableObject {
     }
     
     init(begin: String, numMonths: Int) {
-        print("setting up Months view model: \(begin)  \(numMonths)")
         self.begin = begin
         let mit = ymDateFormatter.getMIT(ymd: begin)
         self.baseYear = mit.year
@@ -280,11 +277,7 @@ public struct MonthView : View {
     
     
     public var body: some View {
-        let _ = Self._printChanges()
-        
-        
         LazyVGrid(columns: dayItemLayout) {
-            
             ForEach( (1..<50) ) { i in
                 if i>=begin && i<=end  {
                     let day = i + weekdayAdjustment

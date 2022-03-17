@@ -114,7 +114,9 @@ public struct WeekView: View {
             HStack {
                 Image(systemName: "arrow.left")
             }
-        })
+        }, trailing: 
+                                calendarModel.cellBuilder.dayViewAdditionLink(calendarModel, model.getYMD(model.selected)))
+        
     }
     
     

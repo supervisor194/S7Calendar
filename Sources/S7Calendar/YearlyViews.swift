@@ -18,8 +18,6 @@ public struct WrappedYearlyView<Content: View> : View {
     }
     
     public var body: some View {
-        let _ = Self._printChanges()
-
         yearlyView
             .onAppear {
                 if let backFromMonths = self.model.backFromMonths {
@@ -98,7 +96,6 @@ public struct YearlyView: View {
             columnWidth = ((s.width/3.0)-4.0)
             cellWidth = columnWidth / 7.0
             fontSize = max(floor(((s.width-8.0)/3.0)/20.0 - 1.0), 10.0)
-            print("using fontSize: \(fontSize)")
         }
     }
     
@@ -198,7 +195,6 @@ class YearlyViewModel : ObservableObject {
     /*
     @MainActor
     func proxySnap(_ proxy: ScrollViewProxy) async -> Int {
-        print("proxySnap: \(Thread.current)")
         if let target = selected {
             proxy.scrollTo(target, anchor: .center)
         }
