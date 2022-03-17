@@ -252,7 +252,6 @@ class WeekViewModel : ObservableObject {
     
     @MainActor
     func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
-        print("running snap on: \(Thread.current)")
         let snapTo = Int(Double(selected-1)/7.0) * 7 + 1
         proxy.scrollTo(snapTo, anchor: .leading)
         return 1
@@ -264,7 +263,6 @@ class WeekViewModel : ObservableObject {
             let target = self.snap()
             self.subscription?.cancel()
             withAnimation {
-                print("running on: \(Thread.current)")
                 proxy.scrollTo(target, anchor: .leading)
             }
             self.setupSubscription(proxy)
@@ -298,7 +296,6 @@ class WeekViewModel : ObservableObject {
     
     @MainActor
     func setYMD() {
-        print("setYMD()...\(Thread.current)")
         dayComponent.day = selected - 1
         let selectedDate = ymDateFormatter.addComponents(components: dayComponent, to: firstDay)
         selectedYMD = ymDateFormatter.getYMDForDate(selectedDate)
