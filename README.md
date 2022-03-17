@@ -38,6 +38,7 @@ import Foundation
 import SwiftUI
 import S7Calendar
 
+
 class MyCellBuilder : CellBuilder {
     
     func yearlyViewDayCell(_ model: CalendarModel, _ dac:MonthInfoAndToday, _ day: Int, _ fontSize: CGFloat) -> AnyView {
@@ -66,6 +67,10 @@ class MyCellBuilder : CellBuilder {
     
     func dayViewHourCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ hour: Int) -> AnyView {
         AnyView(MyDayViewHourCell(model: model, mit: mit, hour: hour))
+    }
+    
+    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: String) -> AnyView? {
+        AnyView(MyDayViewAdditionLink(model: model, ymd: ymd))
     }
     
 }
@@ -120,10 +125,14 @@ struct MyMonthlyViewDayCell : View {
                     .font(.system(size: fontSize*0.5))
                 Spacer()
             }//.frame(maxWidth: .infinity, minHeight: 70)
+            
         }
     }
     
     func dayColor(day: Int) -> Color {
+        if Int.random(in: 1..<100) < 10 {
+            return Color.green
+        }
         let d1 = 7 - mit.weekday+1
         let d2 = 7 - mit.weekday+2
         if isToday(mit: mit, day: day) {
@@ -140,6 +149,23 @@ struct MyMeetingView : View {
     
     var body: some View {
         Text("Here is my meeting")
+    }
+}
+
+struct MyDayViewAdditionLink : View {
+    
+    var model: CalendarModel
+    var ymd: String
+    
+    init(model: CalendarModel, ymd: String) {
+        self.model = model
+        self.ymd = ymd
+    }
+    
+    var body:some View {
+        NavigationLink(destination: Text("add some event for \(ymd)")) {
+            Label("Plus", systemImage: "plus")
+        }
     }
 }
 
@@ -183,9 +209,15 @@ struct MyYearlyViewDayCell : View {
     let day: Int
     let fontSize: CGFloat
     
+    func doit() -> Bool {
+        if Int.random(in: 1..<1000) < 10 {
+            return true
+        }
+        return false
+    }
     
     var body: some View {
-        if isToday(mit: dac, day: day) {
+        if isToday(mit: dac, day: day) || doit() {
             Image(systemName: "circle.fill")
                 .font(.system(size: fontSize * 1.25))
                 .background(.red)
@@ -205,4 +237,6 @@ struct MyYearlyViewDayCell : View {
         }
     }
 }
+
+
 ```
