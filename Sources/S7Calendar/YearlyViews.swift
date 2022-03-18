@@ -56,7 +56,7 @@ public struct YearlyView: View {
         self.calendarModel = calendarModel
     }
     
-    public func getIdForToday() -> Int? {
+    public func getIdForToday() -> Int {
         model.navViaToday
     }
     
@@ -161,7 +161,7 @@ class YearlyViewModel : ObservableObject {
     
     @Published var selected: Int? = nil
     
-    var navViaToday: Int? = nil
+    let navViaToday: Int
     
     var yearForToday: Int
     var monthForToday: Int
@@ -196,12 +196,11 @@ class YearlyViewModel : ObservableObject {
         self.numYears = numYears
         self.numMonths = numYears * 12
         self.numCells = numYears * 15
-        
-        self.monthForToday = ymDateFormatter.getMonthForToday()
-        self.yearForToday = ymDateFormatter.getYearForToday()
-        
-        self.navViaToday = buildId(y: yearForToday, m: monthForToday)
-        
+        let y = ymDateFormatter.getYearForToday()
+        let m = ymDateFormatter.getMonthForToday()
+        self.yearForToday = y
+        self.monthForToday = m
+        self.navViaToday = (y - mit.year) * 15 + m + 3
     }
     
     /*
@@ -231,6 +230,7 @@ class YearlyViewModel : ObservableObject {
         let m =  (id - 1) % 15 - 2
         return YM(y:y, m:m)
     }
+    
     
     func buildId(y: Int, m: Int) -> Int {
         let id = (y - baseYear) * 15 + m + 3
