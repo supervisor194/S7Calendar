@@ -15,3 +15,20 @@ extension View {
             .onPreferenceChange(SizePreferenceKey.self, perform: onChange)
     }
 }
+
+
+public struct NavBarColorsView : View {
+    
+    let model: CalendarModel
+    
+    public init(_ model: CalendarModel) {
+        self.model = model
+    }
+    
+    public var body: some View {
+        HStack {
+        }
+        .frame(maxWidth: .infinity, maxHeight: 1)
+        .background(model.colors.navBackground)
+    }
+}

@@ -30,8 +30,7 @@ public struct WrappedYearlyView<Content: View> : View {
             .onDisappear {
                 self.model.selected = nil
             }
-            .padding(.leading, 4)
-            .padding(.trailing, 4)
+            
     }
 }
 
@@ -57,45 +56,58 @@ public struct YearlyView: View {
         self.calendarModel = calendarModel
     }
     
+    public func getIdForToday() -> Int? {
+        model.navViaToday
+    }
+    
     func getMonth(_ c: Int) -> Int {
         return (c-1)%15-2
     }
     
     public var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVGrid(columns: monthItemLayout, spacing: 0) {
-                    ForEach( (1...model.numCells), id: \.self) { c in
-                        buildCell(c: c)
-                            .id(c)
+        VStack(spacing: 0) {
+            NavBarColorsView(calendarModel)
+            Spacer()
+                .frame(maxHeight: 1)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVGrid(columns: monthItemLayout, spacing: 0) {
+                        ForEach( (1...model.numCells), id: \.self) { c in
+                            buildCell(c: c)
+                                .id(c)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
-                }
-                .onChange(of: model.selected) { v in
-                    if let target = model.selected {
-                        withAnimation {
-                            proxy.scrollTo(target, anchor: .center)
+                    .onChange(of: model.selected) { v in
+                        if let target = model.selected {
+                            withAnimation {
+                                proxy.scrollTo(target, anchor: .center)
+                            }
                         }
                     }
                 }
+            }.readSize { s in
+                width = s.width
+                columnWidth = ((s.width/3.0)-4.0)
+                cellWidth = columnWidth / 7.0
+                fontSize = max(floor(((s.width-8.0)/3.0)/20.0 - 1.0), 10.0)
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button( action: {
-                        if model.selected == model.navViaToday {
-                            aSelection = model.navViaToday
-                        }
-                        model.selected = model.navViaToday
-                    }) {
-                        Text("Today")
+            .padding(.leading, 4)
+            .padding(.trailing, 4)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button( action: {
+                    if model.selected == model.navViaToday {
+                        aSelection = model.navViaToday
                     }
+                    model.selected = model.navViaToday
+                }) {
+                    Text("Today")
+                        .foregroundColor(calendarModel.colors.navIcons)
                 }
             }
-        }.readSize { s in
-            width = s.width
-            columnWidth = ((s.width/3.0)-4.0)
-            cellWidth = columnWidth / 7.0
-            fontSize = max(floor(((s.width-8.0)/3.0)/20.0 - 1.0), 10.0)
         }
     }
     
@@ -288,7 +300,7 @@ struct YearlyMonthView : View {
             Text(mit.name)
                 .font(.system(.title3))
                 .fontWeight(.bold)
-                .foregroundColor(mit.isMonth ? .red : .black)
+                .foregroundColor(mit.isMonth ? .red : calendarModel.colors.text)
                 .frame(maxWidth: columnWidth, alignment: .leading)
             
             ForEach ( model.rowStarts  ) { rsv in

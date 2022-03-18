@@ -64,6 +64,7 @@ public struct MonthsView : View {
     
     public var body: some View {
         VStack(spacing: 0) {
+            NavBarColorsView(calendarModel)
             ScrollViewReader { proxy in
                 ScrollView() {
                     LazyVStack(spacing: 20) {
@@ -72,10 +73,12 @@ public struct MonthsView : View {
                                 .id(i)
                                 .onAppear {
                                     model.visibleItems[Int(i)] = true
+                                    
                                     //model.computeToolbarYear()
                                 }
                                 .onDisappear {
                                     model.visibleItems.removeValue(forKey:Int(i))
+                                    
                                     //model.computeToolbarYear()
                                 }
                             
@@ -89,6 +92,8 @@ public struct MonthsView : View {
                         }
                     }
                 }
+                
+                .navigationBarTitleDisplayMode(.inline)
                 .navigationBarTitle(model.toolbarYear)
                 .navigationBarBackButtonHidden(true)
                 .navigationBarItems(leading:
@@ -112,19 +117,22 @@ public struct MonthsView : View {
                             }
                         }) {
                             Text("Today")
+                                .foregroundColor(calendarModel.colors.navIcons)
                         }
                     }
+                }
+            }.readSize { s in
+                let fs = max(floor(s.width/20.0 - 1.0), 10.0)
+                if fs != fontSize {
+                    fontSize = fs
                 }
             }
             
         }
         
-        .readSize { s in
-            let fs = max(floor(s.width/20.0 - 1.0), 10.0)
-            if fs != fontSize {
-                fontSize = fs
-            }
-        }
+        /*
+         */
+        
     }
 }
 

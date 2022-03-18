@@ -22,6 +22,8 @@ public protocol CalendarConfig {
     var yearlyView: ((_ calendarModel: CalendarModel) -> YearlyView)? { get }
     var weekView: ((_ calendarModel: CalendarModel) -> WeekView)? { get }
     var monthsView: ((_ calendarModel: CalendarModel) -> MonthsView)? { get }
+    
+    var colors: ((_ calendarModel: CalendarModel) -> CalendarColors)? { get }
 }
 
 
@@ -49,6 +51,9 @@ public class CalendarModelLoader {
         if let monthsView = model.config.monthsView {
             model.monthsView = monthsView(model)
         }
+        if let colors = model.config.colors {
+            model.colors = colors(model)
+        } 
     }
     
 }
@@ -95,10 +100,23 @@ public class CalendarModel : ObservableObject {
         }
     }
     
+    var _colors: CalendarColors
+    
+    public var colors: CalendarColors {
+        get {
+            _colors
+        }
+        
+        set {
+            _colors = newValue
+        }
+    }
+    
     public init(_ config: CalendarConfig) {
         self.name = config.name
         self.cellBuilder = config.cellBuilder
         self.config = config
+        self._colors = DefaultCalendarColors()
     }
 }
 

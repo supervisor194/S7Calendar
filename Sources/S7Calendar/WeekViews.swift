@@ -51,6 +51,8 @@ public struct WeekView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
+            NavBarColorsView(calendarModel)
+
             HStack {
                 ForEach( (0...model.dayHeading.count-1), id: \.self) { i in
                     Text(model.dayHeading[i])
@@ -64,7 +66,7 @@ public struct WeekView: View {
             .readSize { s in
                 cellWidth = s.width / 7.0
             }
-            .background(.cyan)
+            .background(calendarModel.colors.weekViewHeader)
             ScrollViewReader { proxy in
                 OriginAwareScrollView(name: calendarModel.name, axes: [.horizontal], showIndicators: false, onOriginChange: { model.origin.send($0) }) {
                     LazyHStack(spacing:0) {
@@ -94,7 +96,6 @@ public struct WeekView: View {
                 .background(.red)
                 .coordinateSpace(name: calendarModel.name)
             }
-            .background(.green)
                // .padding(0)
                 
             DayView(calendarModel: calendarModel, ymd: model.selectedYMD)
