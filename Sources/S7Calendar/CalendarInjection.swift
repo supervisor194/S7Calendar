@@ -13,6 +13,33 @@ public protocol CellBuilder {
     func dayViewAdditionLink(_ model: CalendarModel, _ ymd: String) -> AnyView?
 }
 
+public class EmptyCellBuilder : CellBuilder {
+    public func yearlyViewDayCell(_ model: CalendarModel, _ dac: MonthInfoAndToday, _ day: Int, _ fontSize: CGFloat) -> AnyView {
+        fatalError("must implement a CellBuilder")
+    }
+    
+    public func monthlyViewDayCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ day: Int, _ fontSize: CGFloat) -> AnyView {
+        fatalError("must implement a CellBuilder")
+    }
+    
+    public func monthlyViewNameCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ fontSize: CGFloat) -> AnyView {
+        fatalError("must implement a CellBuilder")
+    }
+    
+    public func monthlyViewEmptyCell(_ model: CalendarModel, _ fontSize: CGFloat) -> AnyView {
+        fatalError("must implement a CellBuilder")
+    }
+    
+    public func dayViewHourCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ hour: Int) -> AnyView {
+        fatalError("must implement a CellBuilder")
+    }
+    
+    public func dayViewAdditionLink(_ model: CalendarModel, _ ymd: String) -> AnyView? {
+        fatalError("must implement a CellBuilder")
+    }
+    
+    
+}
 
 @available(iOS 15.0, *)
 public protocol CalendarConfig {
@@ -24,6 +51,26 @@ public protocol CalendarConfig {
     var monthsView: ((_ calendarModel: CalendarModel) -> MonthsView)? { get }
     
     var colors: ((_ calendarModel: CalendarModel) -> CalendarColors)? { get }
+}
+
+open class CalendarConfigBase : CalendarConfig {
+    public let name: String
+    
+    public let cellBuilder: CellBuilder
+    
+    public var yearlyView: ((CalendarModel) -> YearlyView)? = nil
+    
+    public var weekView: ((CalendarModel) -> WeekView)? = nil
+    
+    public var monthsView: ((CalendarModel) -> MonthsView)? = nil
+    
+    public var colors: ((CalendarModel) -> CalendarColors)? = nil
+    
+    public init(name: String, cellBuilder: CellBuilder) {
+        self.name = name
+        self.cellBuilder = cellBuilder
+    }
+    
 }
 
 

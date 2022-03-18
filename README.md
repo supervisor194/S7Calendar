@@ -8,13 +8,12 @@ A basic iOS 15 App
 
 ```
 import SwiftUI
-
 import S7Calendar
 
 public let cml = CalendarModelLoader.instance
 
 @main
-struct S7CApp: App { 
+struct S7CApp: App {
     
     init() {
       cml.addModel(CalendarModel(MyConfig()))
@@ -23,9 +22,11 @@ struct S7CApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationView {
-                WrappedYearlyView(cml.getModel("foo").yearlyView, 1)
+                WrappedYearlyView(cml.getModel("foo").yearlyView, cml.getModel("foo").yearlyView!.getIdForToday() ?? 1)
             }
+           
             .navigationViewStyle(StackNavigationViewStyle())
+            .background(.green)
         }
     }
 }
@@ -76,18 +77,11 @@ class MyCellBuilder : CellBuilder {
 }
 
 
-class MyConfig : CalendarConfig {
-    
-    let name: String
-    let cellBuilder: CellBuilder
-    let weekView: ((CalendarModel) -> WeekView)?
-    let monthsView: ((CalendarModel) -> MonthsView)?
-    let yearlyView: ((CalendarModel) -> YearlyView)?
+public class MyConfig : CalendarConfigBase {
     
     init() {
-        name = "foo"
-        cellBuilder = MyCellBuilder()
-        
+        super.init(name: "foo", cellBuilder: MyCellBuilder())
+                
         self.weekView = { calendarModel in
             WeekView(calendarModel: calendarModel, begin: "2019 1 1", numDays: 365*10)
         }
@@ -195,7 +189,7 @@ struct MyDayViewHourCell : View {
                 
             } else {
                 Text(String("."))
-                    .foregroundColor(.black)
+                    .foregroundColor(model.colors.text)
                     .font(.system(size: 18))
             }
         }
@@ -225,7 +219,7 @@ struct MyYearlyViewDayCell : View {
                 .saturation(1.0)
                 .blur(radius: fontSize / 3.0 )
                 .overlay(Text(String(day))
-                            .foregroundColor(.black)
+                            .foregroundColor(model.colors.text)
                             .font(.system(size: fontSize)))
             
         } else {
@@ -233,10 +227,8 @@ struct MyYearlyViewDayCell : View {
                 .font(.system(size: fontSize))
                 .fontWeight(.medium)
                 .lineLimit(1)
-                .foregroundColor(.black)
+                .foregroundColor(model.colors.text)
         }
     }
 }
-
-
 ```
