@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 @available(iOS 15.0, *)
 public protocol CellBuilder {
@@ -87,7 +88,9 @@ public class TodayInfo : ObservableObject {
     @Published public var ymd: YMD
     
     public static let shared = TodayInfo()
-   
+    
+    var timer: AnyCancellable?
+    
     private init() {
         let ymd = ymDateFormatter.getYMDForToday()
         today = Date()
@@ -100,9 +103,7 @@ public class TodayInfo : ObservableObject {
     }
     
     
-    @MainActor
-    func isNew() async -> Bool {
-        print("isNew() \(Thread.current)")
+    func isNew() -> Bool {
         let ymd = ymDateFormatter.getYMDForToday()
         var changed = false
         if self.year != ymd.year {
@@ -126,14 +127,13 @@ public class TodayInfo : ObservableObject {
     
     // set a timer for every second, update dayCount if day changes
     func setupTimer() {
-        Task.detached {
-            print("on detached timer \(Thread.current)")
-            async let n = self.isNew()
-            await n
-            print("back on detached \(Thread.current)")
-            usleep(1000*1000)
-            self.setupTimer()
-        }
+        self.timer = Timer.publish(every: 1, on: RunLoop.current, in: .default)
+            .autoconnect()
+            .receive(on: RunLoop.main)
+            .sink() { [weak self] _ in
+                guard let self = self else { return }
+                self.isNew()
+            }
     }
     
 }

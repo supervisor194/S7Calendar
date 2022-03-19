@@ -6,7 +6,7 @@ public struct WrappedWeekView<Content: View> : View {
     
     let weekView: Content
     
-    let model: WeekViewModel
+    @ObservedObject var model: WeekViewModel
     
     let toSelect: Int
     
@@ -83,7 +83,7 @@ public struct WeekView: View {
                         Task.detached {
                             await model.waitAndClear()
                             await model.setYMD()
-                            await  model.doScrollSnap(proxy)
+                            await model.doScrollSnap(proxy)
                         }
                     }
                     .onAppear {
@@ -92,8 +92,10 @@ public struct WeekView: View {
                             await model.doScrollSnap(proxy)
                             await model.signal()
                             await model.setupSubscription(proxy)
-                            
                         }
+                    }
+                    .onDisappear {
+                        model.subscription?.cancel()
                     }
                 }
                 .background(.red)
@@ -225,6 +227,7 @@ class WeekViewModel : ObservableObject {
         if let sem = self.sem {
             sem.wait()
             self.sem = nil
+            return
         }
     }
     
@@ -280,6 +283,7 @@ class WeekViewModel : ObservableObject {
             let mod = selected % 7
             let pos = mod == 0 ? 6 : mod - 1
             self.selected = target + pos
+            
             
         }
     }

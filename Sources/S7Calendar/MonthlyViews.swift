@@ -42,10 +42,10 @@ public struct MonthsView : View {
     
     @ObservedObject var model : MonthsViewModel
     @ObservedObject var todayInfo: TodayInfo = .shared
-    
+    @ObservedObject var calendarModel: CalendarModel
+
     @State var fontSize: CGFloat = 30
     
-    @ObservedObject var calendarModel: CalendarModel
 
     public init(calendarModel: CalendarModel, begin: String, numMonths: Int) {
         self.model = MonthsViewModel(begin: begin, numMonths: numMonths)
@@ -63,10 +63,7 @@ public struct MonthsView : View {
     }
     
     public var body: some View {
-        let _ = Self._printChanges()
         VStack(spacing: 0) {
-            Text(String(todayInfo.year))
-
             NavBarColorsView(calendarModel)
             ScrollViewReader { proxy in
                 ScrollView() {
@@ -75,14 +72,10 @@ public struct MonthsView : View {
                             createMonthView(i)
                                 .id(i)
                                 .onAppear {
-                                    model.visibleItems[Int(i)] = true
-                                    
-                                    //model.computeToolbarYear()
+                                    model.setVisible(i, true)
                                 }
                                 .onDisappear {
-                                    model.visibleItems.removeValue(forKey:Int(i))
-                                    
-                                    //model.computeToolbarYear()
+                                    model.setVisible(i, false)
                                 }
                             
                         }.frame(maxWidth: .infinity)
@@ -205,8 +198,9 @@ public class MonthsViewModel : ObservableObject {
     
     // use TodayInfo
     func findMonthForToday() -> Int {
-        let ymd = TodayInfo.shared.ymd 
-        return getTag(ymd)
+        let ymd = TodayInfo.shared.ymd
+        let ymdMonth = YMD(ymd.year, ymd.month, 1)
+        return getTag(ymdMonth)
     }
     
     @MainActor
@@ -236,17 +230,24 @@ public class MonthsViewModel : ObservableObject {
         return YM(y:0,m:0)
     }
     
-    func computeToolbarYear() {
-        var m = 7000
-        let yearCounts = visibleItems.keys.reduce(into: [Int:Int]()) {  // $0 [:]  $1 == 'id'
-            let y = baseYear + ($1-1)/12
-            m = min(y,m)
-            $0[y,default:0] += 1
+    func setVisible(_ i:Int, _ b: Bool) {
+        if b {
+            visibleItems[i] = true
+        } else {
+            visibleItems.removeValue(forKey: i)
         }
-        if yearCounts.count > 0 {
+        var m = 7000
+        if visibleItems.keys.count > 0 {
+            let yearCounts = visibleItems.keys.reduce(into: [Int:Int]()) {  // $0 [:]  $1 == 'id'
+                let y = baseYear + ($1-1)/12
+                m = min(y,m)
+                $0[y,default:0] += 1
+            }
             let sorted = yearCounts.sorted { return $0.value < $1.value }
             let equalCounts = sorted.allSatisfy { $0.value == sorted.first!.value }
             toolbarYear = equalCounts ? String(m) : String(sorted.last!.key)
+        } else {
+            toolbarYear = ""
         }
     }
     

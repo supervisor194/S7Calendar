@@ -21,15 +21,15 @@ public class CalendarUIColor : UIColor {
 
 public class CalendarColor {
     
-    var _color: Color
+    let _color: Color
     
-    var color : Color { get
+    public var color : Color { get
         {
             return _color
         }
     }
     
-    init(light: Color, dark: Color) {
+    public init(light: Color, dark: Color) {
         _color = Color(CalendarUIColor(light: UIColor(light), dark: UIColor(dark)))
     }
     
