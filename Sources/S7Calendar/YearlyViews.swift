@@ -37,14 +37,14 @@ public struct WrappedYearlyView<Content: View> : View {
 @available(iOS 15.0, *)
 public struct YearlyView: View {
     
+    @ObservedObject var model: YearlyViewModel
+    @ObservedObject var  calendarModel: CalendarModel
+    
     @State var fontSize: CGFloat = 100
     @State var width: CGFloat = 375
     @State var columnWidth: CGFloat = 375
     @State var cellWidth: CGFloat = 375
     
-    
-    @ObservedObject var model: YearlyViewModel
-    let calendarModel: CalendarModel
     var monthItemLayout = [GridItem(.flexible(), alignment: .top),
                            GridItem(.flexible(), alignment: .top),
                            GridItem(.flexible(), alignment: .top)]
@@ -57,7 +57,7 @@ public struct YearlyView: View {
     }
     
     public func getIdForToday() -> Int {
-        model.navViaToday
+        model.idForToday()
     }
     
     func getMonth(_ c: Int) -> Int {
@@ -99,10 +99,12 @@ public struct YearlyView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button( action: {
-                    if model.selected == model.navViaToday {
-                        aSelection = model.navViaToday
+                    // todo: perhaps use TodayInfo ???
+                    let idForToday = model.idForToday()
+                    if model.selected == idForToday {
+                        aSelection = idForToday
                     }
-                    model.selected = model.navViaToday
+                    model.selected = idForToday
                 }) {
                     Text("Today")
                         .foregroundColor(calendarModel.colors.navIcons)
@@ -160,20 +162,14 @@ struct YM {
 class YearlyViewModel : ObservableObject {
     
     @Published var selected: Int? = nil
-    
-    let navViaToday: Int
-    
-    var yearForToday: Int
-    var monthForToday: Int
-    
+            
     var visibleItems: [Int: Bool] = [:]
     
     let baseYear: Int
     
     let firstMonth: Date
-    var monthComponents = DateComponents()
+    let beginningMonthInfo: MonthInfo
     let numYears: Int
-    let numMonths: Int
     let numCells: Int
     
     var tagsByYMD: [String:Int] = [:]
@@ -190,17 +186,21 @@ class YearlyViewModel : ObservableObject {
     }
     
     init(begin:String, numYears: Int) {
-        let mit = ymDateFormatter.getMIT(ymd: begin)
-        self.baseYear = mit.year
+        self.beginningMonthInfo = ymDateFormatter.monthInfo(ymd: begin)
+        self.baseYear = beginningMonthInfo.year
         self.firstMonth = ymDateFormatter.getDate(ymd: begin)
         self.numYears = numYears
-        self.numMonths = numYears * 12
         self.numCells = numYears * 15
-        let y = ymDateFormatter.getYearForToday()
-        let m = ymDateFormatter.getMonthForToday()
-        self.yearForToday = y
-        self.monthForToday = m
-        self.navViaToday = (y - mit.year) * 15 + m + 3
+    }
+    
+    func idForYM(y: Int, m: Int) -> Int {
+        (y - beginningMonthInfo.year) * 15 + m + 3
+    }
+    
+    func idForToday() -> Int {
+        let y = TodayInfo.shared.year
+        let m = TodayInfo.shared.month
+        return idForYM(y: y, m: m)
     }
     
     /*
@@ -262,14 +262,15 @@ struct YearlyMonthView : View {
     @Binding var fontSize: CGFloat
     
     @ObservedObject var model = YearlyMonthViewModel()
-    
-    let mit: MonthInfoAndToday
+    @ObservedObject var calendarModel: CalendarModel
+    @ObservedObject var todayInfo : TodayInfo = TodayInfo.shared
+
+    let monthInfo: MonthInfo
     let begin: Int
     let end: Int
     let weekdayAdjustment: Int
     let start: Int
     
-    let calendarModel: CalendarModel
     
     var dayItemLayout : [GridItem] = Array(repeating: GridItem(.flexible(minimum: 5, maximum: 100), spacing: 0), count: 7)
     
@@ -278,10 +279,11 @@ struct YearlyMonthView : View {
         _columnWidth = columnWidth
         _cellWidth = cellWidth
         self.calendarModel = calendarModel
-        self.mit = ymDateFormatter.getMIT(ymd: String(year) + " " + String(month) + " 1")
-        self.begin = mit.weekday + 7 - ymDateFormatter.firstWeekdayAdjustment
-        self.end = mit.weekday + mit.count + 6 - ymDateFormatter.firstWeekdayAdjustment
-        self.weekdayAdjustment = -mit.weekday - 6 + ymDateFormatter.firstWeekdayAdjustment
+        let ymd = YMD(year, month, 1)
+        self.monthInfo = ymDateFormatter.monthInfo(ymd: ymd)
+        self.begin = monthInfo.weekday + 7 - ymDateFormatter.firstWeekdayAdjustment
+        self.end = monthInfo.weekday + monthInfo.numDays + 6 - ymDateFormatter.firstWeekdayAdjustment
+        self.weekdayAdjustment = -monthInfo.weekday - 6 + ymDateFormatter.firstWeekdayAdjustment
         if begin>7 {
             start = 8
         } else {
@@ -297,10 +299,10 @@ struct YearlyMonthView : View {
     
     var body: some View {
         VStack(spacing: 0) {
-            Text(mit.name)
+            Text(monthInfo.name)
                 .font(.system(.title3))
                 .fontWeight(.bold)
-                .foregroundColor(mit.isMonth ? .red : calendarModel.colors.text)
+                .foregroundColor( monthInfo.month == todayInfo.month ? .red : calendarModel.colors.text)
                 .frame(maxWidth: columnWidth, alignment: .leading)
             
             ForEach ( model.rowStarts  ) { rsv in
@@ -309,7 +311,7 @@ struct YearlyMonthView : View {
                         let theI = rsv.id + i
                         if theI>=begin && theI<=end {
                             let day = theI + weekdayAdjustment
-                            calendarModel.cellBuilder.yearlyViewDayCell(calendarModel, mit, day, fontSize)
+                            calendarModel.cellBuilder.yearlyViewDayCell(calendarModel, monthInfo, day, fontSize)
                                 .frame(width: cellWidth)
                         } else {
                             Text("88")

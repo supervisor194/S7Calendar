@@ -3,14 +3,14 @@ import SwiftUI
 
 @available(iOS 15.0, *)
 public protocol CellBuilder {
-    func yearlyViewDayCell(_ model: CalendarModel, _ dac:MonthInfoAndToday, _ day: Int, _ fontSize: CGFloat) -> AnyView
+    func yearlyViewDayCell(_ model: CalendarModel, _ monthInfo:MonthInfo, _ day: Int, _ fontSize: CGFloat) -> AnyView
     
-    func monthlyViewDayCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ day: Int, _ fontSize: CGFloat) -> AnyView
-    func monthlyViewNameCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ fontSize: CGFloat) -> AnyView
+    func monthlyViewDayCell(_ model: CalendarModel, _ monthInfo: MonthInfo, _ day: Int, _ fontSize: CGFloat) -> AnyView
+    func monthlyViewNameCell(_ model: CalendarModel, _ monthInfo: MonthInfo, _ fontSize: CGFloat) -> AnyView
     func monthlyViewEmptyCell(_ model: CalendarModel, _ fontSize: CGFloat) -> AnyView
     
-    func dayViewHourCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ hour: Int) -> AnyView
-    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: String) -> AnyView?
+    func dayViewHourCell(_ model: CalendarModel, _ monthInfo: MonthInfo, _ hour: Int) -> AnyView
+    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: YMD) -> AnyView?
 }
 
 
@@ -78,16 +78,74 @@ public class CalendarModelLoader {
     
 }
 
+public class TodayInfo : ObservableObject {
+    @Published public var dayChangeCount: Int = 1
+    @Published public var today: Date
+    @Published public var year: Int
+    @Published public var month: Int
+    @Published public var day: Int
+    @Published public var ymd: YMD
+    
+    public static let shared = TodayInfo()
+   
+    private init() {
+        let ymd = ymDateFormatter.getYMDForToday()
+        today = Date()
+        self.ymd = ymd
+        year = ymd.year
+        month = ymd.month
+        day = ymd.day
+
+        setupTimer()
+    }
+    
+    
+    @MainActor
+    func isNew() async -> Bool {
+        print("isNew() \(Thread.current)")
+        let ymd = ymDateFormatter.getYMDForToday()
+        var changed = false
+        if self.year != ymd.year {
+            self.year = ymd.year
+            changed = true
+        }
+        if self.month != ymd.month {
+            self.month = ymd.month
+            changed = true
+        }
+        if self.day != ymd.day {
+            self.day = ymd.day
+            changed = true
+        }
+        if changed {
+            self.ymd = ymd
+            self.dayChangeCount += 1
+        }
+        return changed
+    }
+    
+    // set a timer for every second, update dayCount if day changes
+    func setupTimer() {
+        Task.detached {
+            print("on detached timer \(Thread.current)")
+            async let n = self.isNew()
+            await n
+            print("back on detached \(Thread.current)")
+            usleep(1000*1000)
+            self.setupTimer()
+        }
+    }
+    
+}
 
 public class CalendarModel : ObservableObject {
     
     @Published var name: String
-    
+        
     let config : CalendarConfig
     let cellBuilder : CellBuilder
     
     var _weekView: WeekView? = nil
-    
     public var weekView : WeekView? {
         get {
             _weekView
@@ -98,7 +156,6 @@ public class CalendarModel : ObservableObject {
     }
     
     var _monthsView : MonthsView? = nil
-    
     public var monthsView: MonthsView? {
         get {
             _monthsView
@@ -110,7 +167,6 @@ public class CalendarModel : ObservableObject {
     
     
     var _yearlyView: YearlyView? = nil
-    
     public var yearlyView: YearlyView? {
         get {
             _yearlyView
@@ -121,7 +177,6 @@ public class CalendarModel : ObservableObject {
     }
     
     var _colors: CalendarColors
-    
     public var colors: CalendarColors {
         get {
             _colors

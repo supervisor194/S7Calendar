@@ -41,16 +41,16 @@ public struct MonthsView : View {
     @Environment(\.presentationMode) var presentationMode
     
     @ObservedObject var model : MonthsViewModel
+    @ObservedObject var todayInfo: TodayInfo = .shared
     
     @State var fontSize: CGFloat = 30
     
-    let calendarModel: CalendarModel
-    
+    @ObservedObject var calendarModel: CalendarModel
+
     public init(calendarModel: CalendarModel, begin: String, numMonths: Int) {
         self.model = MonthsViewModel(begin: begin, numMonths: numMonths)
         self.calendarModel = calendarModel
     }
-    
     
     
     func createMonthView(_ i: Int) -> MonthView {
@@ -63,7 +63,10 @@ public struct MonthsView : View {
     }
     
     public var body: some View {
+        let _ = Self._printChanges()
         VStack(spacing: 0) {
+            Text(String(todayInfo.year))
+
             NavBarColorsView(calendarModel)
             ScrollViewReader { proxy in
                 ScrollView() {
@@ -157,8 +160,8 @@ public class MonthsViewModel : ObservableObject {
     var begin: String
     let numMonths: Int
     
-    var tagsByYMD : [String: Int] = [:]
-    var tagsById : [Int:String] = [:]
+    var tagsByYMD : [YMD: Int] = [:]
+    var tagsById : [Int:YMD] = [:]
     
     var _backFromWeek: Int? = nil
     var backFromWeek: Int? {
@@ -172,7 +175,7 @@ public class MonthsViewModel : ObservableObject {
     
     init(begin: String, numMonths: Int) {
         self.begin = begin
-        let mit = ymDateFormatter.getMIT(ymd: begin)
+        let mit = ymDateFormatter.monthInfo(ymd: begin)
         self.baseYear = mit.year
         self.baseMonth = mit.month
         
@@ -182,26 +185,27 @@ public class MonthsViewModel : ObservableObject {
         for month in 1...numMonths {
             monthComponents.month = month - 1
             let selectedDate = ymDateFormatter.addComponents(components: monthComponents, to: firstMonth)
-            let ymd = ymDateFormatter.getYMDForDate(selectedDate)
+            let ymd = ymDateFormatter.getYMD(date: selectedDate)
             addTag(ymd, month)
         }
     }
     
-    func addTag(_ ymd: String, _ month: Int) {
+    func addTag(_ ymd: YMD, _ month: Int) {
         tagsByYMD[ymd] = month
         tagsById[month] = ymd
     }
     
-    func getTag(_ ymd: String) -> Int {
+    func getTag(_ ymd: YMD) -> Int {
         tagsByYMD[ymd]!
     }
     
-    func getYMD(_ id: Int) -> String {
+    func getYMD(_ id: Int) -> YMD {
         tagsById[id]!
     }
     
+    // use TodayInfo
     func findMonthForToday() -> Int {
-        let ymd = ymDateFormatter.getYMDMonthForToday()
+        let ymd = TodayInfo.shared.ymd 
         return getTag(ymd)
     }
     
@@ -251,12 +255,13 @@ public class MonthsViewModel : ObservableObject {
 
 public struct MonthView : View {
     
+    @ObservedObject var calendarModel: CalendarModel
+
     @Binding var fontSize: CGFloat
     
-    let mit: MonthInfoAndToday
+    let monthInfo: MonthInfo
     let begin: Int
     let end: Int
-    let calendarModel: CalendarModel
     
     let weekdayAdjustment: Int
     
@@ -264,10 +269,11 @@ public struct MonthView : View {
                                             GridItem(.flexible(minimum: 5, maximum: 100),  spacing: 0), count: 7)
     
     
-    init(ymd: String, calendarModel: CalendarModel, fontSize: Binding<CGFloat>) {
-        self.mit = ymDateFormatter.getMIT(ymd: ymd)
+    init(ymd: YMD, calendarModel: CalendarModel, fontSize: Binding<CGFloat>) {
+        self.calendarModel = calendarModel
+        self.monthInfo = ymDateFormatter.monthInfo(ymd: ymd)
         
-        var begin = mit.weekday + 7 - ymDateFormatter.firstWeekdayAdjustment
+        var begin = monthInfo.weekday + 7 - ymDateFormatter.firstWeekdayAdjustment
         var doSub = false
         if begin-7 <= 0 {
             begin += 7
@@ -275,11 +281,10 @@ public struct MonthView : View {
         }
         self.begin = begin
         // self.begin = mit.weekday + 7 - ymDateFormatter.firstWeekdayAdjustment
-        self.end = self.begin + mit.count - 1
+        self.end = self.begin + monthInfo.numDays - 1
         // self.end = mit.weekday + mit.count + 6 - ymDateFormatter.firstWeekdayAdjustment // where 6 is from -1 + 7
-        self.calendarModel = calendarModel
         self._fontSize = fontSize
-        self.weekdayAdjustment = -mit.weekday - 6 + ymDateFormatter.firstWeekdayAdjustment - (doSub ? 7 : 0)
+        self.weekdayAdjustment = -monthInfo.weekday - 6 + ymDateFormatter.firstWeekdayAdjustment - (doSub ? 7 : 0)
         
     }
     
@@ -289,9 +294,9 @@ public struct MonthView : View {
             ForEach( (1..<50) ) { i in
                 if i>=begin && i<=end  {
                     let day = i + weekdayAdjustment
-                    calendarModel.cellBuilder.monthlyViewDayCell(calendarModel, mit, day, fontSize)
+                    calendarModel.cellBuilder.monthlyViewDayCell(calendarModel, monthInfo, day, fontSize)
                 } else if i == begin - 7 {
-                    calendarModel.cellBuilder.monthlyViewNameCell(calendarModel, mit, fontSize)
+                    calendarModel.cellBuilder.monthlyViewNameCell(calendarModel, monthInfo, fontSize)
                 } else {
                     calendarModel.cellBuilder.monthlyViewEmptyCell(calendarModel, fontSize)
                 }

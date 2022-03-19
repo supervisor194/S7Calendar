@@ -1,8 +1,8 @@
 import Foundation
 
 /*
- // MonthInfoAndToday has the beginning day of the month 1 Sunday 7 Saturday
- // if day is today, red
+ // MonthInfo has the beginning day of the month 1 Sunday 7 Saturday
+ //
  // begin = 3, then weekends are Tues (3,1) Wed 3,2 Th 3,3, f 3,4
  
  begin = 1, ->  1  7,8  14, 15  21, 22  28, 29
@@ -29,20 +29,16 @@ import Foundation
  */
 
 
-public struct MonthInfoAndToday {
+public struct MonthInfo {
     public let weekday: Int   // day of the week this month begins, 1 Sunday in USA
-    public let count: Int     // number of days in this month
+    public let numDays: Int     // number of days in this month
     public let name: String   // name of the month as 3 letters, Jan
-    public let year: Int
-    public let month: Int
-    public let isYear: Bool   // is the year the same as today's year
-    public let isMonth: Bool  // is the month the same as today's month
-    public let today: Int     // the day in the month for today
+    public let year: Int      // the year for this month
+    public let month: Int     // month number, Jan == 1 ... Dec == 12
 }
 
-public func isToday(mit: MonthInfoAndToday, day: Int) -> Bool {
-    return mit.today == day && mit.isMonth && mit.isYear
-}
+
+// todo: setup like the ymDateFormatter but with template
 
 public class LocalizedDateFormatter1 {
     let dateFormatter = DateFormatter()
@@ -55,6 +51,28 @@ public class LocalizedDateFormatter1 {
 }
 
 public let ldf1 = LocalizedDateFormatter1()
+
+public struct YMD : Hashable {
+    public let year: Int
+    public let month: Int
+    public let day: Int
+    
+    public init(_ year: Int, _ month: Int, _ day: Int) {
+        self.year = year
+        self.month = month
+        self.day = day
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(year)
+        hasher.combine(month)
+        hasher.combine(day)
+    }
+    
+    public static func == (lhs: YMD, rhs: YMD) -> Bool {
+        lhs.day == rhs.day && lhs.month == rhs.month && lhs.year == rhs.year
+    }
+}
 
 @available(iOS 15.0, *)
 public class YMDateFormatter {
@@ -89,29 +107,35 @@ public class YMDateFormatter {
     }
     
     func getFirstWeekdayAdjustment() -> Int {
-        return calendar.firstWeekday - 1
+        calendar.firstWeekday - 1
     }
     
     func getDate(ymd: String) -> Date {
-        return dateFormatter.date(from: ymd)!
+        dateFormatter.date(from: ymd)!
+    }
+    
+    func getDate(ymd: YMD) -> Date {
+        getDate(ymd: String(ymd.year) + " " + String(ymd.month) + " " + String(ymd.day))
     }
     
     func addComponents(components: DateComponents, to: Date) -> Date {
         return calendar.date(byAdding: components, to: to)!
     }
     
-    func getYMDForDate(_ date: Date) -> String {
+    // todo: not used ???
+    func getYMDString(_ date: Date) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from:   date)
         return String(c.year!) + " " + String(c.month!) + " " + String(c.day!)
     }
     
-    func getYMDMonthForToday() -> String {
+    func getYMDStringFirstOfMonthForToday() -> String {
         let c = calendar.dateComponents([.year, .month], from: Date())
         return String(c.year!) + " " + String(c.month!) + " 1"
     }
     
-    func getYMDForToday() -> String {
-        return getYMDForDate(Date())
+    // todo: not used ???
+    func getYMDStringForToday() -> String {
+        return getYMDString(Date())
     }
     
     func getIntervalDays(_ begin: Date, _ end: Date) -> Int {
@@ -129,34 +153,42 @@ public class YMDateFormatter {
         return todayComponents.month!
     }
     
+    func getYMD(date: Date) -> YMD {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return YMD(components.year!, components.month!, components.day!)
+    }
+    
+    func getYMDForToday() -> YMD {
+        getYMD(date: Date())
+    }
+    
     func isCurrentYear(y: Int) -> Bool {
         let todayYear = calendar.dateComponents([.year], from: Date()).year!
         return y == todayYear
     }
     
-    func getMIT(ymd: String) -> MonthInfoAndToday {
-        let date = dateFormatter.date(from: ymd)!
-        return getMIT(date: date)
+    func monthInfo(ymd: YMD) -> MonthInfo {
+        let date = getDate(ymd: ymd)
+        return monthInfo(date: date)
     }
     
-    func getMIT(date: Date) -> MonthInfoAndToday {
+    func monthInfo(ymd: String) -> MonthInfo {
+        let date = dateFormatter.date(from: ymd)!
+        return monthInfo(date: date)
+    }
+    
+    func monthInfo(date: Date) -> MonthInfo {
         let dateComponents = calendar.dateComponents([.weekday, .day, .month, .year], from: date)
         let interval = calendar.dateInterval(of: .month, for: date)!
         let intervalDays = calendar.dateComponents([.day], from: interval.start, to: interval.end)
         let count = intervalDays.day!
         let name = monthFormatter.string(from: date)
-        let todayComponents = calendar.dateComponents([.day, .month, .year], from: Date())
-        let isYear = dateComponents.year! == todayComponents.year!
-        let isMonth = isYear && (dateComponents.month! == todayComponents.month!)
-        let today = todayComponents.day!
-        return MonthInfoAndToday(weekday: dateComponents.weekday!,
-                                 count: count,
-                                 name: name,
-                                 year: dateComponents.year!,
-                                 month: dateComponents.month!,
-                                 isYear: isYear,
-                                 isMonth: isMonth,
-                                 today: today)
+       
+        return MonthInfo(weekday: dateComponents.weekday!,
+                         numDays: count,
+                         name: name,
+                         year: dateComponents.year!,
+                         month: dateComponents.month!)
     }
     
 }

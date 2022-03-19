@@ -3,6 +3,8 @@
 A simple SwiftUI calendar library with year, month, week and day views.  Developers customize
 the cells to render notifications, meetings, etc.  
 
+Not yet at release 1.0.   Call it 0.7 
+
 
 A basic iOS 15 App
 
@@ -22,7 +24,7 @@ struct S7CApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationView {
-                WrappedYearlyView(cml.getModel("foo").yearlyView, cml.getModel("foo").yearlyView!.getIdForToday() ?? 1)
+                WrappedYearlyView(cml.getModel("foo").yearlyView, cml.getModel("foo").yearlyView!.getIdForToday())
             }
            
             .navigationViewStyle(StackNavigationViewStyle())
@@ -42,15 +44,15 @@ import S7Calendar
 
 class MyCellBuilder : CellBuilder {
     
-    func yearlyViewDayCell(_ model: CalendarModel, _ dac:MonthInfoAndToday, _ day: Int, _ fontSize: CGFloat) -> AnyView {
-        AnyView(MyYearlyViewDayCell(model: model, dac: dac,day: day,fontSize: fontSize))
+    func yearlyViewDayCell(_ model: CalendarModel, _ dac:MonthInfo, _ day: Int, _ fontSize: CGFloat) -> AnyView {
+        AnyView(MyYearlyViewDayCell(model: model, monthInfo: dac,day: day,fontSize: fontSize))
     }
     
-    func monthlyViewDayCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ day: Int, _ fontSize: CGFloat) -> AnyView {
-        AnyView(MyMonthlyViewDayCell(model: model, mit:mit, day: day, fontSize:fontSize))
+    func monthlyViewDayCell(_ model: CalendarModel, _ mit: MonthInfo, _ day: Int, _ fontSize: CGFloat) -> AnyView {
+        AnyView(MyMonthlyViewDayCell(model: model, monthInfo:mit, day: day, fontSize:fontSize))
     }
     
-    func monthlyViewNameCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ fontSize: CGFloat) -> AnyView {
+    func monthlyViewNameCell(_ model: CalendarModel, _ mit: MonthInfo, _ fontSize: CGFloat) -> AnyView {
         AnyView(Text(mit.name)
                     .font(.system(size: fontSize))
                     .fontWeight(.medium)
@@ -66,11 +68,11 @@ class MyCellBuilder : CellBuilder {
         )
     }
     
-    func dayViewHourCell(_ model: CalendarModel, _ mit: MonthInfoAndToday, _ hour: Int) -> AnyView {
+    func dayViewHourCell(_ model: CalendarModel, _ mit: MonthInfo, _ hour: Int) -> AnyView {
         AnyView(MyDayViewHourCell(model: model, mit: mit, hour: hour))
     }
     
-    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: String) -> AnyView? {
+    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: YMD) -> AnyView? {
         AnyView(MyDayViewAdditionLink(model: model, ymd: ymd))
     }
     
@@ -81,7 +83,7 @@ public class MyConfig : CalendarConfigBase {
     
     init() {
         super.init(name: "foo", cellBuilder: MyCellBuilder())
-                
+        
         self.weekView = { calendarModel in
             WeekView(calendarModel: calendarModel, begin: "2019 1 1", numDays: 365*10)
         }
@@ -99,14 +101,16 @@ public class MyConfig : CalendarConfigBase {
 
 struct MyMonthlyViewDayCell : View {
     
-    let model: CalendarModel
-    let mit: MonthInfoAndToday
+    @ObservedObject var model: CalendarModel
+    @ObservedObject var todayInfo: TodayInfo = TodayInfo.shared
+    
+    let monthInfo: MonthInfo
     let day: Int
     let fontSize: CGFloat
     
     @ViewBuilder
     var body: some View {
-        NavigationLink(destination: WrappedWeekView(model.weekView, model.weekView!.getTagForDay(day: day, mit: mit))) {
+        NavigationLink(destination: WrappedWeekView(model.weekView, model.weekView!.getTagForDay(day: day, monthInfo: monthInfo))) {
             VStack {
                 Divider()
                 Text(String(day))
@@ -127,11 +131,13 @@ struct MyMonthlyViewDayCell : View {
         if Int.random(in: 1..<100) < 10 {
             return Color.green
         }
-        let d1 = 7 - mit.weekday+1
-        let d2 = 7 - mit.weekday+2
-        if isToday(mit: mit, day: day) {
+        let d1 = 7 - monthInfo.weekday+1
+        let d2 = 7 - monthInfo.weekday+2
+        
+        if todayInfo.day == day && monthInfo.year == todayInfo.year && monthInfo.month == todayInfo.month {
             return Color.red
         }
+        
         if (day-d1) % 7 == 0 || (day-d2) % 7 == 0 {
             return Color.gray
         }
@@ -148,16 +154,16 @@ struct MyMeetingView : View {
 
 struct MyDayViewAdditionLink : View {
     
-    var model: CalendarModel
-    var ymd: String
+    @ObservedObject var model: CalendarModel
+    var ymd: YMD
     
-    init(model: CalendarModel, ymd: String) {
+    init(model: CalendarModel, ymd: YMD) {
         self.model = model
         self.ymd = ymd
     }
     
     var body:some View {
-        NavigationLink(destination: Text("add some event for \(ymd)")) {
+        NavigationLink(destination: Text("add some event for \(String(ymd.year)) \(ymd.month) \(ymd.day)")) {
             Label("Plus", systemImage: "plus")
         }
     }
@@ -165,8 +171,8 @@ struct MyDayViewAdditionLink : View {
 
 struct MyDayViewHourCell : View {
     
-    let model: CalendarModel
-    let mit: MonthInfoAndToday
+    @ObservedObject var model: CalendarModel
+    let mit: MonthInfo
     let hour: Int
     
     @State var selection: String? = nil
@@ -198,8 +204,10 @@ struct MyDayViewHourCell : View {
 
 struct MyYearlyViewDayCell : View {
     
-    let model: CalendarModel
-    let dac: MonthInfoAndToday
+    @ObservedObject var model: CalendarModel
+    @ObservedObject var todayInfo: TodayInfo = TodayInfo.shared
+    
+    let monthInfo: MonthInfo
     let day: Int
     let fontSize: CGFloat
     
@@ -211,7 +219,7 @@ struct MyYearlyViewDayCell : View {
     }
     
     var body: some View {
-        if isToday(mit: dac, day: day) || doit() {
+        if day == todayInfo.day && monthInfo.month == todayInfo.month && monthInfo.year == todayInfo.year || doit() {
             Image(systemName: "circle.fill")
                 .font(.system(size: fontSize * 1.25))
                 .background(.red)

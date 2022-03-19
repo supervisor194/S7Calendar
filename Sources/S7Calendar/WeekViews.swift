@@ -26,17 +26,20 @@ public struct WrappedWeekView<Content: View> : View {
     
 }
 
+/*
+ The WeekView runs over all the days, months, years in the CalendarModel
+ */
 
 public struct WeekView: View {
     
     @Environment(\.presentationMode) var presentationMode
     
     @ObservedObject var model : WeekViewModel
+    @ObservedObject var  calendarModel: CalendarModel
     
     @State var cellWidth: CGFloat = 55.0
     @State var useH: CGFloat = 55.0
-    
-    let calendarModel: CalendarModel
+   
     let numDays : Int
     
     public init(calendarModel: CalendarModel, begin: String, numDays: Int) {
@@ -45,8 +48,8 @@ public struct WeekView: View {
         self.model = WeekViewModel(beginAroundYMD: begin, numDays: numDays)
     }
     
-    public func getTagForDay(day: Int, mit: MonthInfoAndToday) -> Int {
-        model.getTagForDay(day, mit)
+    public func getTagForDay(day: Int, monthInfo: MonthInfo) -> Int {
+        model.getTagForDay(day, monthInfo)
     }
     
     public var body: some View {
@@ -106,7 +109,7 @@ public struct WeekView: View {
                                 Button(action: {
             if let monthsView = calendarModel.monthsView {
                 let ymd = model.getYMD(model.selected)
-                let ymdMonth = ymd.replacingOccurrences(of: #"[\d-]+$"#, with: "1", options: .regularExpression)
+                let ymdMonth = YMD(ymd.year, ymd.month, 1)
                 let monthTag = monthsView.model.getTag(ymdMonth)
                 monthsView.model.backFromWeek = monthTag
             }
@@ -160,8 +163,8 @@ class WeekViewModel : ObservableObject {
     var subscription: AnyCancellable? = nil
     var sem: DispatchSemaphore? = nil
     
-    var tagsByYMD: [String:Int] = [:]
-    var tagsById: [Int:String] = [:]
+    var tagsByYMD: [YMD:Int] = [:]
+    var tagsById: [Int:YMD] = [:]
     
     init(beginAroundYMD: String, numDays: Int) {
         self.origin = CurrentValueSubject<CGPoint, Never>(.zero)
@@ -198,12 +201,12 @@ class WeekViewModel : ObservableObject {
         
         dayComponent.day = 1 - 1
         let selectedDate = ymDateFormatter.addComponents(components: dayComponent, to: firstDay)
-        selectedYMD = ymDateFormatter.getYMDForDate(selectedDate)
+        selectedYMD = ymDateFormatter.getYMDString(selectedDate)
         
         for day in 1...numDays {
             dayComponent.day = day - 1
             let selectedDate = ymDateFormatter.addComponents(components: dayComponent, to: firstDay)
-            let ymd = ymDateFormatter.getYMDForDate(selectedDate)
+            let ymd = ymDateFormatter.getYMD(date: selectedDate)
             addTag(ymd, day)
         }
        
@@ -225,21 +228,21 @@ class WeekViewModel : ObservableObject {
         }
     }
     
-    func addTag(_ ymd: String, _ i:Int) {
+    func addTag(_ ymd: YMD, _ i:Int) {
         tagsByYMD[ymd] = i
         tagsById[i] = ymd
     }
     
-    func getTag(_ ymd: String) -> Int {
+    func getTag(_ ymd: YMD) -> Int {
         tagsByYMD[ymd]!
     }
     
-    func getYMD(_ i:Int) -> String {
+    func getYMD(_ i:Int) -> YMD {
         tagsById[i]!
     }
     
-    func getTagForDay(_ day: Int, _ mit: MonthInfoAndToday) -> Int {
-        let ymd = String(mit.year) + " " + String(mit.month) + " " + String(day)
+    func getTagForDay(_ day: Int, _ monthInfo: MonthInfo) -> Int {
+        let ymd = YMD(monthInfo.year, monthInfo.month, day)
         return getTag(ymd)
     }
     
@@ -305,21 +308,22 @@ class WeekViewModel : ObservableObject {
     func setYMD() {
         dayComponent.day = selected - 1
         let selectedDate = ymDateFormatter.addComponents(components: dayComponent, to: firstDay)
-        selectedYMD = ymDateFormatter.getYMDForDate(selectedDate)
+        selectedYMD = ymDateFormatter.getYMDString(selectedDate)
     }
     
 }
 
 struct DayView : View {
     
+    @ObservedObject var calendarModel: CalendarModel
+
     let day: Date
-    let mit: MonthInfoAndToday
-    let calendarModel: CalendarModel
+    let monthInfo: MonthInfo
     
     init(calendarModel: CalendarModel, ymd: String) {
         self.calendarModel = calendarModel
         day = ymDateFormatter.getDate(ymd: ymd)
-        mit = ymDateFormatter.getMIT(date: day)
+        monthInfo = ymDateFormatter.monthInfo(date: day)
     }
     
     var body: some View {
@@ -331,7 +335,7 @@ struct DayView : View {
         ScrollView {
             VStack {
                 ForEach( (0...23), id: \.self) { hour in
-                    HourView(calendarModel: calendarModel, mit: mit, day: day, hour: hour)
+                    HourView(calendarModel: calendarModel, monthInfo: monthInfo, day: day, hour: hour)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -345,8 +349,8 @@ struct DayView : View {
 
 struct HourView : View {
     
-    let calendarModel: CalendarModel
-    let mit: MonthInfoAndToday
+    @ObservedObject var calendarModel: CalendarModel
+    let monthInfo: MonthInfo
     let day: Date
     let hour: Int
     
@@ -359,7 +363,7 @@ struct HourView : View {
                     Divider()
                 }.frame(maxWidth: .infinity)
             }
-            calendarModel.cellBuilder.dayViewHourCell(calendarModel, mit, hour)
+            calendarModel.cellBuilder.dayViewHourCell(calendarModel, monthInfo, hour)
                 .frame(maxWidth: .infinity)
             
         }
