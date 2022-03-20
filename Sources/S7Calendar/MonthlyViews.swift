@@ -7,13 +7,17 @@ public struct WrappedMonthsView<Content: View> : View {
     let monthsView: Content
     
     let model: MonthsViewModel
-    
+    let cModel: CalendarModel
+
     let toSelect: Int
+    let uuid: UUID
     
-    init(_ content: Content, _ toSelect: Int) {
+    init(_ content: Content,  _ calendarModel: CalendarModel, _ toSelect: Int) {
         self.monthsView = content
         let mv = monthsView as! MonthsView
         self.model = mv.model
+        self.cModel = calendarModel
+        self.uuid = mv.uuid
         self.toSelect = toSelect
     }
     
@@ -22,13 +26,13 @@ public struct WrappedMonthsView<Content: View> : View {
             .onAppear {
                 if let backFromWeek = self.model.backFromWeek {
                     self.model.backFromWeek = nil
-                    self.model.selected = backFromWeek
+                    self.cModel.selected[uuid] = backFromWeek
                 } else {
-                    self.model.selected = toSelect
+                    self.cModel.selected[uuid] = toSelect
                 }
             }
             .onDisappear {
-                self.model.selected = nil
+                self.cModel.selected[uuid] = nil
             }
     }
     
@@ -36,20 +40,34 @@ public struct WrappedMonthsView<Content: View> : View {
 
 
 
-public struct MonthsView : View {
+public struct MonthsView : View, CalendarView {
+    
+    
+    public var uuid: UUID {
+        get {
+            model._uuid
+        }
+    }
+    
+    public var calendarModel: CalendarModel {
+        get {
+            return cModel
+        }
+        
+    }
     
     @Environment(\.presentationMode) var presentationMode
     
     @ObservedObject var model : MonthsViewModel
     @ObservedObject var todayInfo: TodayInfo = .shared
-    @ObservedObject var calendarModel: CalendarModel
+    @ObservedObject var cModel: CalendarModel
 
     @State var fontSize: CGFloat = 30
     
 
     public init(calendarModel: CalendarModel, begin: String, numMonths: Int) {
-        self.model = MonthsViewModel(begin: begin, numMonths: numMonths)
-        self.calendarModel = calendarModel
+        self.model = MonthsViewModel(begin: begin, numMonths: numMonths, calendarModel: calendarModel)
+        self.cModel = calendarModel
     }
     
     
@@ -57,14 +75,14 @@ public struct MonthsView : View {
         if let v = model.monthView[i] {
             return v
         }
-        let v = MonthView(ymd: model.getYMD(i), calendarModel: calendarModel, fontSize: $fontSize)
+        let v = MonthView(ymd: model.getYMD(i), calendarModel: cModel, fontSize: $fontSize)
         model.monthView[i] = v
         return v
     }
     
     public var body: some View {
         VStack(spacing: 0) {
-            NavBarColorsView(calendarModel)
+            NavBarColorsView(cModel)
             ScrollViewReader { proxy in
                 ScrollView() {
                     LazyVStack(spacing: 20) {
@@ -80,8 +98,8 @@ public struct MonthsView : View {
                             
                         }.frame(maxWidth: .infinity)
                     }
-                    .onChange(of: model.selected) { v in
-                        if let target = model.selected {
+                    .onChange(of: cModel.selected[uuid]) { v in
+                        if let target = cModel.selected[uuid] {
                             withAnimation {
                                 proxy.scrollTo(target, anchor: .center)
                             }
@@ -94,7 +112,7 @@ public struct MonthsView : View {
                 .navigationBarBackButtonHidden(true)
                 .navigationBarItems(leading:
                                         Button(action: {
-                    if let yearlyView = calendarModel.yearlyView {
+                    if let yearlyView = cModel.yearlyView {
                         yearlyView.model.backFromMonths = model.earliestVisible()
                     }
                     self.presentationMode.wrappedValue.dismiss()
@@ -113,7 +131,7 @@ public struct MonthsView : View {
                             }
                         }) {
                             Text("Today")
-                                .foregroundColor(calendarModel.colors.navIcons)
+                                .foregroundColor(cModel.colors.navIcons)
                         }
                     }
                 }
@@ -137,7 +155,10 @@ public struct MonthsView : View {
 
 public class MonthsViewModel : ObservableObject {
     
-    @Published var selected: Int? = nil
+    var _uuid = UUID.init()
+
+    
+    // @Published var selected: Int? = nil
     @Published var toolbarYear: String = ""
     
     var monthView: [Int:MonthView] = [:]
@@ -166,7 +187,10 @@ public class MonthsViewModel : ObservableObject {
         }
     }
     
-    init(begin: String, numMonths: Int) {
+    let cModel: CalendarModel
+    
+    init(begin: String, numMonths: Int, calendarModel: CalendarModel) {
+        self.cModel = calendarModel
         self.begin = begin
         let mit = ymDateFormatter.monthInfo(ymd: begin)
         self.baseYear = mit.year
@@ -205,16 +229,20 @@ public class MonthsViewModel : ObservableObject {
     
     @MainActor
     func isSnapToVisible() async -> Bool {
-        if let selected = selected {
-            return visibleItems[selected] != nil
+        if let selected = cModel.selected[_uuid] {
+            if let selected = selected {
+                return visibleItems[selected] != nil
+            }
         }
         return false
     }
     
     @MainActor
     func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
-        if let selected = selected {
-            proxy.scrollTo(selected, anchor: .center)
+        if let selected = cModel.selected[_uuid] {
+            if let selected = selected {
+                proxy.scrollTo(selected, anchor: .center)
+            }
         }
         return 1
     }

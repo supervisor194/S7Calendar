@@ -6,14 +6,17 @@ public struct WrappedYearlyView<Content: View> : View {
     let yearlyView: Content
     
     let model: YearlyViewModel
+    let cModel: CalendarModel
     
     let toSelect: Int
+    let _uuid: UUID
     
-    
-    public init(_ content: Content, _ toSelect: Int) {
+    public init(_ content: Content, _ calendarModel: CalendarModel, _ toSelect: Int) {
         self.yearlyView = content
         let yv = content as! YearlyView
         self.model = yv.model
+        self._uuid = yv.uuid
+        self.cModel = calendarModel
         self.toSelect = toSelect
     }
     
@@ -22,23 +25,38 @@ public struct WrappedYearlyView<Content: View> : View {
             .onAppear {
                 if let backFromMonths = self.model.backFromMonths {
                     self.model.backFromMonths = nil
-                    self.model.selected = model.buildId(y:backFromMonths.y, m:backFromMonths.m)
+                    self.cModel.selected[_uuid] = model.buildId(y:backFromMonths.y, m:backFromMonths.m)
                 } else {
-                    self.model.selected = toSelect
+                    self.cModel.selected[_uuid] = toSelect
                 }
             }
             .onDisappear {
-                self.model.selected = nil
+                self.cModel.selected[_uuid] = nil
             }
             
     }
 }
 
 @available(iOS 15.0, *)
-public struct YearlyView: View {
+public struct YearlyView: View, CalendarView {
+    
+    var _uuid = UUID.init()
+    
+    public var uuid: UUID {
+        get {
+            _uuid
+        }
+    }
+    
+    public var calendarModel: CalendarModel {
+        get {
+            return cModel
+        }
+        
+    }
     
     @ObservedObject var model: YearlyViewModel
-    @ObservedObject var  calendarModel: CalendarModel
+    @ObservedObject var  cModel: CalendarModel
     
     @State var fontSize: CGFloat = 100
     @State var width: CGFloat = 375
@@ -53,7 +71,7 @@ public struct YearlyView: View {
     
     public init(calendarModel: CalendarModel, begin: String, numYears: Int) {
         self.model = YearlyViewModel(begin: begin, numYears: numYears)
-        self.calendarModel = calendarModel
+        self.cModel = calendarModel
     }
     
     public func getIdForToday() -> Int {
@@ -66,7 +84,7 @@ public struct YearlyView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            NavBarColorsView(calendarModel)
+            NavBarColorsView(cModel)
             Spacer()
                 .frame(maxHeight: 1)
             ScrollViewReader { proxy in
@@ -78,8 +96,8 @@ public struct YearlyView: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .onChange(of: model.selected) { v in
-                        if let target = model.selected {
+                    .onChange(of: cModel.selected[_uuid]) { v in
+                        if let target = cModel.selected[_uuid] {
                             withAnimation {
                                 proxy.scrollTo(target, anchor: .center)
                             }
@@ -101,13 +119,13 @@ public struct YearlyView: View {
                 Button( action: {
                     // todo: perhaps use TodayInfo ???
                     let idForToday = model.idForToday()
-                    if model.selected == idForToday {
+                    if cModel.selected[_uuid] == idForToday {
                         aSelection = idForToday
                     }
-                    model.selected = idForToday
+                    cModel.selected[_uuid] = idForToday
                 }) {
                     Text("Today")
-                        .foregroundColor(calendarModel.colors.navIcons)
+                        .foregroundColor(cModel.colors.navIcons)
                 }
             }
         }
@@ -120,15 +138,16 @@ public struct YearlyView: View {
             Text(String(ym.y))
                 .font(.system(.title))
                 .fontWeight(.bold)
-                .foregroundColor(ymDateFormatter.isCurrentYear(y: ym.y) ? .red : calendarModel.colors.text)
+                .foregroundColor(ymDateFormatter.isCurrentYear(y: ym.y) ? .red : cModel.colors.text)
                 .padding(.top, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else if ym.m > 0 {
-            NavigationLink(destination: WrappedMonthsView(calendarModel.monthsView!,
+            NavigationLink(destination: WrappedMonthsView(cModel.monthsView!,
+                                                          cModel,
                                                           model.toMonthsMonth(ym)),
                            tag: c,
-                           selection: $aSelection) {
-                YearlyMonthView(year: ym.y, month: ym.m, calendarModel: calendarModel,
+                           selection: $aSelection) { // $cModel.subSelection[_uuid]
+                YearlyMonthView(year: ym.y, month: ym.m, calendarModel: cModel,
                                 fontSize: $fontSize, columnWidth: $columnWidth, cellWidth: $cellWidth)
             }
                            .frame(maxWidth: .infinity)
@@ -138,9 +157,9 @@ public struct YearlyView: View {
                            }
                            .onDisappear {
                                model.visibleItems.removeValue(forKey: c)
-                               if let selected = model.selected {
+                               if let selected = cModel.selected[_uuid] {
                                    if selected == c {
-                                       model.selected = nil
+                                       cModel.selected[_uuid] = nil
                                    }
                                }
                            }
@@ -161,7 +180,7 @@ struct YM {
 @available(iOS 15.0, macOS 11.0, *)
 class YearlyViewModel : ObservableObject {
     
-    @Published var selected: Int? = nil
+    // @Published var selected: Int? = nil
             
     var visibleItems: [Int: Bool] = [:]
     

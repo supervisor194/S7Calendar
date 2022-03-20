@@ -2,6 +2,19 @@ import Foundation
 import SwiftUI
 import Combine
 
+
+public protocol CalendarView {
+    var uuid: UUID { get }
+    var calendarModel: CalendarModel { get }
+}
+
+public struct NavTo {
+    var view: UUID
+    var id: Int?
+    var subId: Int?
+}
+
+
 @available(iOS 15.0, *)
 public protocol CellBuilder {
     func yearlyViewDayCell(_ model: CalendarModel, _ monthInfo:MonthInfo, _ day: Int, _ fontSize: CGFloat) -> AnyView
@@ -157,6 +170,14 @@ public class CalendarModel : ObservableObject {
     let config : CalendarConfig
     let cellBuilder : CellBuilder
     
+    @Published var selected: [UUID: Int?] = [:]
+    @Published var subSelection: [UUID: Int?] = [:]
+    @Published var navTo: [NavTo]? = nil
+    
+    @Published var weekViewVisible = false
+    @Published var monthsViewVisible = false
+    @Published var yearlyViewVisible = false
+    
     var _weekView: WeekView? = nil
     public var weekView : WeekView? {
         get {
@@ -204,6 +225,35 @@ public class CalendarModel : ObservableObject {
         self.cellBuilder = config.cellBuilder
         self.config = config
         self._colors = DefaultCalendarColors()
+    }
+    
+    @ViewBuilder
+    func buildInitialView() -> some View {
+        if let yearlyView = yearlyView {
+            yearlyView
+                .onAppear {
+                    self.yearlyViewVisible = true
+                }
+                .onDisappear {
+                    self.yearlyViewVisible = false
+                }
+        } else if let monthsView = monthsView {
+            monthsView
+                .onAppear {
+                    self.monthsViewVisible = true
+                }
+                .onDisappear {
+                    self.monthsViewVisible = false
+                }
+        } else if let weekView = weekView {
+            weekView
+                .onAppear {
+                    self.weekViewVisible = true
+                }
+                .onDisappear {
+                    self.weekViewVisible = false 
+                }
+        }
     }
 }
 
