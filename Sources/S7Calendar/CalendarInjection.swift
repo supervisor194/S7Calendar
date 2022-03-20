@@ -11,7 +11,7 @@ public protocol CellBuilder {
     func monthlyViewEmptyCell(_ model: CalendarModel, _ fontSize: CGFloat) -> AnyView
     
     func dayViewHourCell(_ model: CalendarModel, _ monthInfo: MonthInfo, _ hour: Int) -> AnyView
-    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: YMD) -> AnyView?
+    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: YMD,_ tag: String, _ navSelection: Binding<String?>) -> AnyView?
 }
 
 

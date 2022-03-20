@@ -72,27 +72,23 @@ class MyCellBuilder : CellBuilder {
         AnyView(MyDayViewHourCell(model: model, mit: mit, hour: hour))
     }
     
-    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: YMD) -> AnyView? {
-        AnyView(MyDayViewAdditionLink(model: model, ymd: ymd))
+    func dayViewAdditionLink(_ model: CalendarModel, _ ymd: YMD, _ tag: String, _ navSeelction: Binding<String?>) -> AnyView? {
+        AnyView(MyDayViewAdditionLink(model: model, ymd: ymd, tag: tag, navSelection: navSeelction))
     }
     
 }
 
 
 public class MyConfig : CalendarConfigBase {
-    
     init() {
         super.init(name: "foo", cellBuilder: MyCellBuilder())
-        
         self.weekView = { calendarModel in
             WeekView(calendarModel: calendarModel, begin: "2019 1 1", numDays: 365*10)
         }
-        
         self.monthsView = { calendarModel in
             MonthsView(calendarModel: calendarModel, begin: "2019 1 1",
                        numMonths: 12*10)
         }
-        
         self.yearlyView = { calendarModel in
             YearlyView(calendarModel: calendarModel, begin: "2019 1 1", numYears: 10)
         }
@@ -133,15 +129,13 @@ struct MyMonthlyViewDayCell : View {
         }
         let d1 = 7 - monthInfo.weekday+1
         let d2 = 7 - monthInfo.weekday+2
-        
         if todayInfo.day == day && monthInfo.year == todayInfo.year && monthInfo.month == todayInfo.month {
             return Color.red
         }
-        
         if (day-d1) % 7 == 0 || (day-d2) % 7 == 0 {
             return Color.gray
         }
-        return Color.black
+        return model.colors.text
     }
 }
 
@@ -156,15 +150,17 @@ struct MyDayViewAdditionLink : View {
     
     @ObservedObject var model: CalendarModel
     var ymd: YMD
-    
-    init(model: CalendarModel, ymd: YMD) {
-        self.model = model
-        self.ymd = ymd
-    }
+    var tag: String
+    @Binding var navSelection: String?
     
     var body:some View {
-        NavigationLink(destination: Text("add some event for \(String(ymd.year)) \(ymd.month) \(ymd.day)")) {
-            Label("Plus", systemImage: "plus")
+        NavigationLink(destination: Text("add some event for \(String(ymd.year)) \(String(ymd.month)) \(String(ymd.day))"),
+                       tag: tag, selection: $navSelection) {
+            Button(action: {
+                navSelection = tag
+            }) {
+                Label("Plus", systemImage: "plus")
+            }
         }
     }
 }
@@ -192,7 +188,6 @@ struct MyDayViewHourCell : View {
                             .overlay(Text(String("My Big Meeting " + String(i))))                       .border(.blue)
                     }
                 }
-                
             } else {
                 Text(String("."))
                     .foregroundColor(model.colors.text)
@@ -201,6 +196,7 @@ struct MyDayViewHourCell : View {
         }
     }
 }
+
 
 struct MyYearlyViewDayCell : View {
     
@@ -229,7 +225,6 @@ struct MyYearlyViewDayCell : View {
                 .overlay(Text(String(day))
                             .foregroundColor(model.colors.text)
                             .font(.system(size: fontSize)))
-            
         } else {
             Text(String(day))
                 .font(.system(size: fontSize))

@@ -20,7 +20,11 @@ public struct WrappedWeekView<Content: View> : View {
     public var body: some View {
         weekView
             .onAppear {
-                self.model.selected = toSelect
+                if self.model.userNavSelection != nil {
+                    self.model.userNavSelection = nil
+                } else {
+                    self.model.selected = toSelect
+                }
             }
     }
     
@@ -120,11 +124,17 @@ public struct WeekView: View {
             HStack {
                 Image(systemName: "arrow.left")
             }
-        }, trailing: 
-                                calendarModel.cellBuilder.dayViewAdditionLink(calendarModel, model.getYMD(model.selected)))
+        }, trailing:
+                                calendarModel.cellBuilder.dayViewAdditionLink(calendarModel, model.getYMD(model.selected), "userNav",  $model.userNavSelection)
+        )
         
     }
     
+    
+    @ViewBuilder
+    func userAdditionLink() -> some View {
+        EmptyView()
+    }
     
     @ViewBuilder
     func buildButton(_ i:Int, _ proxy: ScrollViewProxy) -> some View {
@@ -153,6 +163,7 @@ class WeekViewModel : ObservableObject {
     
     @Published var selected: Int = 1
     @Published var selectedYMD: String
+    @Published var userNavSelection: String? = nil
     
     var visibleItems: [Int:Bool] = [:]
     
