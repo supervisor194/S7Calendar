@@ -102,8 +102,8 @@ public class TodayInfo : ObservableObject {
         setupTimer()
     }
     
-    
-    func isNew() -> Bool {
+    @MainActor
+    func isNew() async {
         let ymd = ymDateFormatter.getYMDForToday()
         var changed = false
         if self.year != ymd.year {
@@ -122,11 +122,19 @@ public class TodayInfo : ObservableObject {
             self.ymd = ymd
             self.dayChangeCount += 1
         }
-        return changed
     }
     
     // set a timer for every second, update dayCount if day changes
     func setupTimer() {
+        Task.detached {
+            try? await Task.sleep(nanoseconds: 1000000000*5)
+            await self.isNew()
+            self.setupTimer()
+        }
+        
+        // OR
+        
+        /*
         self.timer = Timer.publish(every: 1, on: RunLoop.current, in: .default)
             .autoconnect()
             .receive(on: RunLoop.main)
@@ -134,9 +142,13 @@ public class TodayInfo : ObservableObject {
                 guard let self = self else { return }
                 self.isNew()
             }
+         */
+        
     }
-    
+
 }
+
+
 
 public class CalendarModel : ObservableObject {
     
