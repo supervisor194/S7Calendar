@@ -120,7 +120,7 @@ public struct YearlyView: View {
             Text(String(ym.y))
                 .font(.system(.title))
                 .fontWeight(.bold)
-                .foregroundColor(ymDateFormatter.isCurrentYear(y: ym.y) ? .red : .black)
+                .foregroundColor(ymDateFormatter.isCurrentYear(y: ym.y) ? .red : calendarModel.colors.text)
                 .padding(.top, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else if ym.m > 0 {
