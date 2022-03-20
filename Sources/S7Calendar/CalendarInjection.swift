@@ -127,7 +127,7 @@ public class TodayInfo : ObservableObject {
     // set a timer for every second, update dayCount if day changes
     func setupTimer() {
         Task.detached {
-            try? await Task.sleep(nanoseconds: 1000000000*5)
+            try? await Task.sleep(nanoseconds: 1000000000*1)
             await self.isNew()
             self.setupTimer()
         }
