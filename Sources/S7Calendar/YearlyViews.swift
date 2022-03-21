@@ -1,22 +1,22 @@
 import SwiftUI
 
 @available(iOS 15.0, *)
-public struct WrappedYearlyView<Content: View> : View {
+public struct WrappedYearlyView : View {
     
-    let yearlyView: Content
-    
-    let model: YearlyViewModel
-    let cModel: CalendarModel
+    let yearlyView: YearlyView
+    let uuid: UUID
+
+    @ObservedObject var model: YearlyViewModel
+    @ObservedObject var cModel: CalendarModel
     
     let toSelect: Int
-    let _uuid: UUID
     
-    public init(_ content: Content, _ calendarModel: CalendarModel, _ toSelect: Int) {
-        self.yearlyView = content
-        let yv = content as! YearlyView
-        self.model = yv.model
-        self._uuid = yv.uuid
-        self.cModel = calendarModel
+    
+    public init(_ cModel: CalendarModel, _ toSelect: Int) {
+        yearlyView = cModel.yearlyView!
+        self.uuid = yearlyView.uuid
+        self.model = yearlyView.model
+        self.cModel = cModel
         self.toSelect = toSelect
     }
     
@@ -25,13 +25,13 @@ public struct WrappedYearlyView<Content: View> : View {
             .onAppear {
                 if let backFromMonths = self.model.backFromMonths {
                     self.model.backFromMonths = nil
-                    self.cModel.selected[_uuid] = model.buildId(y:backFromMonths.y, m:backFromMonths.m)
+                    self.cModel.selected[uuid] = model.buildId(y:backFromMonths.y, m:backFromMonths.m)
                 } else {
-                    self.cModel.selected[_uuid] = toSelect
+                    self.cModel.selected[uuid] = toSelect
                 }
             }
             .onDisappear {
-                self.cModel.selected[_uuid] = nil
+                self.cModel.selected[uuid] = nil
             }
             
     }
@@ -54,6 +54,7 @@ public struct YearlyView: View, CalendarView {
         }
         
     }
+
     
     @ObservedObject var model: YearlyViewModel
     @ObservedObject var  cModel: CalendarModel
@@ -66,12 +67,18 @@ public struct YearlyView: View, CalendarView {
     var monthItemLayout = [GridItem(.flexible(), alignment: .top),
                            GridItem(.flexible(), alignment: .top),
                            GridItem(.flexible(), alignment: .top)]
-    
-    @State var aSelection: Int? = nil
-    
+        
     public init(calendarModel: CalendarModel, begin: String, numYears: Int) {
         self.model = YearlyViewModel(begin: begin, numYears: numYears)
         self.cModel = calendarModel
+    }
+    
+    public func toMonthsMonth(_ ym: YM) -> Int {
+        model.toMonthsMonth(ym)
+    }
+    
+    public func getIdForYM(_ ym: YM) -> Int {
+        model.idForYM(y: ym.y, m: ym.m)
     }
     
     public func getIdForToday() -> Int {
@@ -83,6 +90,7 @@ public struct YearlyView: View, CalendarView {
     }
     
     public var body: some View {
+        let _ = Self._printChanges()
         VStack(spacing: 0) {
             NavBarColorsView(cModel)
             Spacer()
@@ -120,7 +128,7 @@ public struct YearlyView: View, CalendarView {
                     // todo: perhaps use TodayInfo ???
                     let idForToday = model.idForToday()
                     if cModel.selected[_uuid] == idForToday {
-                        aSelection = idForToday
+                        cModel.subSelection[_uuid] = idForToday
                     }
                     cModel.selected[_uuid] = idForToday
                 }) {
@@ -142,11 +150,10 @@ public struct YearlyView: View, CalendarView {
                 .padding(.top, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else if ym.m > 0 {
-            NavigationLink(destination: WrappedMonthsView(cModel.monthsView!,
-                                                          cModel,
+            NavigationLink(destination: WrappedMonthsView(cModel,
                                                           model.toMonthsMonth(ym)),
-                           tag: c,
-                           selection: $aSelection) { // $cModel.subSelection[_uuid]
+                           tag: model.toMonthsMonth(ym),
+                           selection: $cModel.subSelection[_uuid]) {
                 YearlyMonthView(year: ym.y, month: ym.m, calendarModel: cModel,
                                 fontSize: $fontSize, columnWidth: $columnWidth, cellWidth: $cellWidth)
             }
@@ -170,11 +177,6 @@ public struct YearlyView: View, CalendarView {
         }
     }
     
-}
-
-struct YM {
-    var y: Int
-    var m: Int
 }
 
 @available(iOS 15.0, macOS 11.0, *)

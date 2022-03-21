@@ -2,22 +2,21 @@ import SwiftUI
 
 
 
-public struct WrappedMonthsView<Content: View> : View {
+public struct WrappedMonthsView: View {
     
-    let monthsView: Content
-    
+    let monthsView: MonthsView
+    let uuid: UUID
+
     @ObservedObject var model: MonthsViewModel
     @ObservedObject var cModel: CalendarModel
 
     let toSelect: Int
-    let uuid: UUID
     
-    init(_ content: Content,  _ calendarModel: CalendarModel, _ toSelect: Int) {
-        self.monthsView = content
-        let mv = monthsView as! MonthsView
-        self.model = mv.model
-        self.cModel = calendarModel
-        self.uuid = mv.uuid
+    init(_ cModel: CalendarModel, _ toSelect: Int) {
+        self.monthsView = cModel.monthsView!
+        self.uuid = monthsView.uuid
+        self.model = monthsView.model
+        self.cModel = cModel
         self.toSelect = toSelect
     }
     
@@ -41,7 +40,6 @@ public struct WrappedMonthsView<Content: View> : View {
 
 
 public struct MonthsView : View, CalendarView {
-    
     
     public var uuid: UUID {
         get {
@@ -71,6 +69,15 @@ public struct MonthsView : View, CalendarView {
     }
     
     
+    // todo: move getTag out of model perhaps and share differently since a user may not have a weekView instantiated
+    public func idForYMD(_ ymd: YMD) -> Int {
+        let id = cModel.weekView!.model.getTag(ymd)
+       
+        print("\(ymd.year) \(ymd.month) \(ymd.day)  \(id)")
+       
+        return id
+    }
+    
     func createMonthView(_ i: Int) -> MonthView {
         if let v = model.monthView[i] {
             return v
@@ -81,6 +88,7 @@ public struct MonthsView : View, CalendarView {
     }
     
     public var body: some View {
+        let _ = Self._printChanges()
         VStack(spacing: 0) {
             NavBarColorsView(cModel)
             ScrollViewReader { proxy in
@@ -157,8 +165,6 @@ public class MonthsViewModel : ObservableObject {
     
     var _uuid = UUID.init()
 
-    
-    // @Published var selected: Int? = nil
     @Published var toolbarYear: String = ""
     
     var monthView: [Int:MonthView] = [:]
@@ -227,6 +233,7 @@ public class MonthsViewModel : ObservableObject {
         return getTag(ymdMonth)
     }
     
+    /*
     @MainActor
     func isSnapToVisible() async -> Bool {
         if let selected = cModel.selected[_uuid] {
@@ -241,7 +248,7 @@ public class MonthsViewModel : ObservableObject {
             proxy.scrollTo(selected, anchor: .center)
         }
         return 1
-    }
+    }*/
     
     func earliestVisible() -> YM {
         if visibleItems.count > 0 {
@@ -287,7 +294,7 @@ public struct MonthView : View {
     let monthInfo: MonthInfo
     let begin: Int
     let end: Int
-    
+    let uuid: UUID
     let weekdayAdjustment: Int
     
     var dayItemLayout : [GridItem] = Array(repeating:
@@ -296,6 +303,8 @@ public struct MonthView : View {
     
     init(ymd: YMD, calendarModel: CalendarModel, fontSize: Binding<CGFloat>) {
         self.calendarModel = calendarModel
+        self.uuid = calendarModel.monthsView!.uuid
+        
         self.monthInfo = ymDateFormatter.monthInfo(ymd: ymd)
         
         var begin = monthInfo.weekday + 7 - ymDateFormatter.firstWeekdayAdjustment
@@ -319,9 +328,11 @@ public struct MonthView : View {
             ForEach( (1..<50) ) { i in
                 if i>=begin && i<=end  {
                     let day = i + weekdayAdjustment
-                    NavigationLink(destination: WrappedWeekView(calendarModel.weekView,
-                                                                calendarModel.weekView!.getTagForDay(day: day, monthInfo: monthInfo))) {
-                    calendarModel.cellBuilder.monthlyViewDayCell(calendarModel, monthInfo, day, fontSize)
+                    NavigationLink(destination: WrappedWeekView(calendarModel,
+                                                                calendarModel.weekView!.getTagForDay(day: day, monthInfo: monthInfo)),
+                                   tag: calendarModel.monthsView!.idForYMD(YMD(monthInfo.year, monthInfo.month, day)),
+                                   selection: $calendarModel.subSelection[uuid]) {
+                        calendarModel.cellBuilder.monthlyViewDayCell(calendarModel, monthInfo, day, fontSize)
                     }
                 } else if i == begin - 7 {
                     calendarModel.cellBuilder.monthlyViewNameCell(calendarModel, monthInfo, fontSize)

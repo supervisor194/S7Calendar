@@ -12,6 +12,23 @@ public struct NavTo {
     var view: UUID
     var id: Int?
     var subId: Int?
+    
+    public init(view: UUID, id: Int? = nil, subId: Int? = nil) {
+        self.view = view
+        self.id = id
+        self.subId = subId
+    }
+}
+
+
+public struct YM {
+    var y: Int
+    var m: Int
+    
+    public init(y: Int, m: Int) {
+        self.y = y
+        self.m = m
+    }
 }
 
 
@@ -139,10 +156,10 @@ public class TodayInfo : ObservableObject {
     
     // set a timer for every second, update dayCount if day changes
     func setupTimer() {
-        Task.detached {
+        Task.detached { [weak self] in
             try? await Task.sleep(nanoseconds: 1000000000*1)
-            await self.isNew()
-            self.setupTimer()
+            await self!.isNew()
+            self!.setupTimer()
         }
         
         // OR
@@ -162,7 +179,6 @@ public class TodayInfo : ObservableObject {
 }
 
 
-
 public class CalendarModel : ObservableObject {
     
     @Published var name: String
@@ -177,6 +193,14 @@ public class CalendarModel : ObservableObject {
     @Published var weekViewVisible = false
     @Published var monthsViewVisible = false
     @Published var yearlyViewVisible = false
+    
+    public func setYearlyViewVisible(_ b: Bool) {
+        self.yearlyViewVisible = b
+    }
+    
+    public func setNavTo(_ navTo: [NavTo]?) {
+        self.navTo = navTo
+    }
     
     var _weekView: WeekView? = nil
     public var weekView : WeekView? {
@@ -227,10 +251,11 @@ public class CalendarModel : ObservableObject {
         self._colors = DefaultCalendarColors()
     }
     
+    
     @ViewBuilder
-    func buildInitialView() -> some View {
+    public func buildInitialView() -> some View {
         if let yearlyView = yearlyView {
-            yearlyView
+            WrappedYearlyView(self, yearlyView.getIdForToday())
                 .onAppear {
                     self.yearlyViewVisible = true
                 }
@@ -253,6 +278,23 @@ public class CalendarModel : ObservableObject {
                 .onDisappear {
                     self.weekViewVisible = false 
                 }
+        }
+    }
+    
+    public func navigateOnAppear() async {
+       
+        if navTo == nil {
+            return
+        }
+        
+        while navTo!.count > 0 {
+            let nt = navTo!.first!
+            
+            selected[nt.view] = nt.id
+            subSelection[nt.view] = nt.subId
+            
+            navTo!.remove(at: 0)
+        
         }
     }
 }

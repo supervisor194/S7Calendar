@@ -2,22 +2,21 @@ import SwiftUI
 import Combine
 
 
-public struct WrappedWeekView<Content: View> : View {
+public struct WrappedWeekView : View {
     
-    let weekView: Content
+    let weekView: WeekView
+    let uuid: UUID
     
     @ObservedObject var model: WeekViewModel
     @ObservedObject var cModel: CalendarModel
     
     let toSelect: Int
-    let uuid: UUID
     
-    public init(_ content: Content, _ toSelect: Int) {
-        self.weekView = content
-        let wv = content as! WeekView
-        self.model = wv.model
-        self.cModel = wv.calendarModel
-        self.uuid = wv.uuid
+    public init(_ cModel: CalendarModel, _ toSelect: Int) {
+        self.weekView = cModel.weekView!
+        self.uuid = weekView.uuid
+        self.model = weekView.model
+        self.cModel = cModel
         self.toSelect = toSelect
     }
     
@@ -61,17 +60,16 @@ public struct WeekView: View, CalendarView {
     
     @State var cellWidth: CGFloat = 55.0
     @State var useH: CGFloat = 55.0
-   
-    let numDays : Int
-    
+       
     public init(calendarModel: CalendarModel, begin: String, numDays: Int) {
         self.cModel = calendarModel
-        self.numDays = numDays
         self.model = WeekViewModel(beginAroundYMD: begin, numDays: numDays, calendarModel: calendarModel)
     }
     
     public func getTagForDay(day: Int, monthInfo: MonthInfo) -> Int {
-        model.getTagForDay(day, monthInfo)
+        let id = model.getTagForDay(day, monthInfo)
+        print("\(monthInfo.year) \(monthInfo.month) \(day) --> \(id)")
+        return id 
     }
     
     public var body: some View {
@@ -97,7 +95,7 @@ public struct WeekView: View, CalendarView {
             ScrollViewReader { proxy in
                 OriginAwareScrollView(name: calendarModel.name, axes: [.horizontal], showIndicators: false, onOriginChange: { model.origin.send($0) }) {
                     LazyHStack(spacing:0) {
-                        ForEach( (1...numDays), id: \.self) { i in
+                        ForEach( (1...model.numDays), id: \.self) { i in
                             buildButton(i, proxy)
                         }
                         .frame(width: cellWidth)
@@ -188,6 +186,7 @@ class WeekViewModel : ObservableObject {
     
     var visibleItems: [Int:Bool] = [:]
     
+    let numDays: Int
     var dayHeading: [String] = []
     let firstDay: Date
     var dayComponent = DateComponents()
@@ -205,6 +204,7 @@ class WeekViewModel : ObservableObject {
     
     init(beginAroundYMD: String, numDays: Int, calendarModel: CalendarModel) {
         self.cModel = calendarModel
+        self.numDays = numDays
         self.origin = CurrentValueSubject<CGPoint, Never>(.zero)
         self.originPublisher = self.origin
             .debounce(for: .seconds(0.2), scheduler: DispatchQueue.main)
@@ -272,7 +272,7 @@ class WeekViewModel : ObservableObject {
         tagsById[i] = ymd
     }
     
-    func getTag(_ ymd: YMD) -> Int {
+    public func getTag(_ ymd: YMD) -> Int {
         tagsByYMD[ymd]!
     }
     
