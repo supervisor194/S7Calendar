@@ -38,14 +38,14 @@ public struct WrappedWeekView : View {
  */
 
 public struct WeekView: View, CalendarView {
-   
+    
     
     public var viewModel: CalendarViewModel {
         get {
             model
         }
     }
-
+    
     
     public var uuid: UUID {
         get {
@@ -60,7 +60,6 @@ public struct WeekView: View, CalendarView {
         
     }
     
-
     @Environment(\.presentationMode) var presentationMode
     
     @ObservedObject var model : WeekViewModel
@@ -68,36 +67,25 @@ public struct WeekView: View, CalendarView {
     
     @State var cellWidth: CGFloat = 55.0
     @State var useH: CGFloat = 55.0
-       
+    
     public init(calendarModel: CalendarModel, begin: String, numDays: Int) {
         self.cModel = calendarModel
         self.model = WeekViewModel(beginAroundYMD: begin, numDays: numDays, calendarModel: calendarModel)
     }
-  
-     
-     public func getIdForYMD(_ ymd: YMD) -> Int {
-         model.getTag(ymd)
-     }
-     
-    /*
-    public func getTagForDay(day: Int, monthInfo: MonthInfo) -> Int {
-        let id = model.getTagForDay(day, monthInfo)
-        print("\(monthInfo.year) \(monthInfo.month) \(day) --> \(id)")
-        return id 
+    
+    public func getIdForYMD(_ ymd: YMD) -> Int {
+        model.getTag(ymd)
     }
-     */
     
     public var body: some View {
-        let _ = Self._printChanges()
-        
         VStack(spacing: 0) {
             NavBarColorsView(calendarModel)
-
+            
             HStack {
                 ForEach( (0...model.dayHeading.count-1), id: \.self) { i in
                     Text(model.dayHeading[i])
                         .font(.caption2)
-                        // .padding(.bottom,5)
+                    // .padding(.bottom,5)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -138,8 +126,8 @@ public struct WeekView: View, CalendarView {
                 .background(.red)
                 .coordinateSpace(name: calendarModel.name)
             }
-               // .padding(0)
-                
+            // .padding(0)
+            
             DayView(calendarModel: calendarModel, ymd: model.selectedYMD)
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -193,7 +181,7 @@ public struct WeekView: View, CalendarView {
 }
 
 class WeekViewModel : ObservableObject, CalendarViewModel {
-   
+    
     @Published public var selected: Int?
     @Published public var subSelected: Int?
     
@@ -218,7 +206,7 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
     var tagsById: [Int:YMD] = [:]
     
     let cModel: CalendarModel
-
+    
     
     init(beginAroundYMD: String, numDays: Int, calendarModel: CalendarModel) {
         self.cModel = calendarModel
@@ -265,7 +253,7 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
             let ymd = ymDateFormatter.getYMD(date: selectedDate)
             addTag(ymd, day)
         }
-       
+        
         computeDayLabels(numDays: numDays)
     }
     
@@ -297,29 +285,20 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
     func getYMD(_ i:Int) -> YMD {
         tagsById[i]!
     }
-
     
-    @MainActor
-    func isSnapToVisible() async -> Bool {
-        let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
-        return visibleItems[snapTo] != nil
-    }
+    /*
+     @MainActor
+     func isSnapToVisible() async -> Bool {
+     let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
+     return visibleItems[snapTo] != nil
+     }
+     */
     
     @MainActor
     func doScrollSnap(_ proxy: ScrollViewProxy) async {
         let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
         proxy.scrollTo(snapTo, anchor: .leading)
     }
-    
-    /*
-     
-     @MainActor
-     func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
-         let snapTo = Int(Double(selected-1)/7.0) * 7 + 1
-         proxy.scrollTo(snapTo, anchor: .leading)
-         return 1
-     }
-     */
     
     func setupSubscription(_ proxy: ScrollViewProxy) {
         subscription = originPublisher.sink { [unowned self] v in
@@ -335,7 +314,7 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
             if selected != target + pos {
                 selected = target + pos
             }
-        
+            
         }
     }
     
@@ -371,7 +350,7 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
 struct DayView : View {
     
     @ObservedObject var calendarModel: CalendarModel
-
+    
     let day: Date
     let monthInfo: MonthInfo
     

@@ -11,7 +11,6 @@ public struct WrappedYearlyView : View {
     
     let toSelect: Int
     
-    
     public init(_ cModel: CalendarModel, _ toSelect: Int) {
         yearlyView = cModel.yearlyView!
         self.uuid = yearlyView.uuid
@@ -96,7 +95,6 @@ public struct YearlyView: View, CalendarView {
     }
     
     public var body: some View {
-        let _ = Self._printChanges()
         VStack(spacing: 0) {
             NavBarColorsView(cModel)
             Spacer()
@@ -190,9 +188,7 @@ public struct YearlyView: View, CalendarView {
 class YearlyViewModel : ObservableObject, CalendarViewModel {
     
     @Published public var selected: Int?
-    
     @Published public var subSelected: Int?
-
     
     var visibleItems: [Int: Bool] = [:]
     
@@ -233,25 +229,7 @@ class YearlyViewModel : ObservableObject, CalendarViewModel {
         return idForYM(y: y, m: m)
     }
     
-    /*
-    @MainActor
-    func proxySnap(_ proxy: ScrollViewProxy) async -> Int {
-        if let target = selected {
-            proxy.scrollTo(target, anchor: .center)
-        }
-        return 1
-    }
-    
-    @MainActor
-    func isVis(_ i: Int) -> Bool {
-        if let v = visibleItems[i] {
-            return v
-        }
-        return false
-    }
-     */
-    
-    // todo: should move to MonthlyViews
+    // todo: should move to MonthlyViews ?
     func toMonthsMonth(_ ym: YM) -> Int {
         (ym.y - baseYear) * 12 + ym.m
     }
@@ -262,12 +240,10 @@ class YearlyViewModel : ObservableObject, CalendarViewModel {
         return YM(y:y, m:m)
     }
     
-    
     func buildId(y: Int, m: Int) -> Int {
         let id = (y - baseYear) * 15 + m + 3
         return id
     }
-
     
 }
 
@@ -282,7 +258,6 @@ class YearlyMonthViewModel : ObservableObject {
     var rowStarts: [RowStartValue] = []
     
     init() {
-        
     }
 }
 

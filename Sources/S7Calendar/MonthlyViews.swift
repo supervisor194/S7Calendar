@@ -6,10 +6,10 @@ public struct WrappedMonthsView: View {
     
     let monthsView: MonthsView
     let uuid: UUID
-
+    
     @ObservedObject var model: MonthsViewModel
     @ObservedObject var cModel: CalendarModel
-
+    
     let toSelect: Int
     
     init(_ cModel: CalendarModel, _ toSelect: Int) {
@@ -46,7 +46,6 @@ public struct MonthsView : View, CalendarView {
         }
     }
     
-    
     public var uuid: UUID {
         get {
             model._uuid
@@ -65,22 +64,16 @@ public struct MonthsView : View, CalendarView {
     @ObservedObject var model : MonthsViewModel
     @ObservedObject var todayInfo: TodayInfo = .shared
     @ObservedObject var cModel: CalendarModel
-
+    
     @State var fontSize: CGFloat = 30
     
-
     public init(calendarModel: CalendarModel, begin: String, numMonths: Int) {
         self.model = MonthsViewModel(begin: begin, numMonths: numMonths, calendarModel: calendarModel)
         self.cModel = calendarModel
     }
     
-    
-    // todo: move getTag out of model perhaps and share differently since a user may not have a weekView instantiated
     public func idForYMD(_ ymd: YMD) -> Int {
         let id = cModel.weekView!.model.getTag(ymd)
-       
-        print("\(ymd.year) \(ymd.month) \(ymd.day)  \(id)")
-       
         return id
     }
     
@@ -98,7 +91,6 @@ public struct MonthsView : View, CalendarView {
     }
     
     public var body: some View {
-        let _ = Self._printChanges()
         VStack(spacing: 0) {
             NavBarColorsView(cModel)
             ScrollViewReader { proxy in
@@ -124,7 +116,6 @@ public struct MonthsView : View, CalendarView {
                         }
                     }
                 }
-                
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationBarTitle(model.toolbarYear)
                 .navigationBarBackButtonHidden(true)
@@ -161,10 +152,6 @@ public struct MonthsView : View, CalendarView {
             }
             
         }
-        
-        /*
-         */
-        
     }
 }
 
@@ -177,7 +164,7 @@ public class MonthsViewModel : ObservableObject, CalendarViewModel {
     @Published public var subSelected: Int?
     
     var _uuid = UUID.init()
-
+    
     @Published var toolbarYear: String = ""
     
     var monthView: [Int:MonthView] = [:]
@@ -245,23 +232,6 @@ public class MonthsViewModel : ObservableObject, CalendarViewModel {
         let ymdMonth = YMD(ymd.year, ymd.month, 1)
         return getTag(ymdMonth)
     }
-    
-    /*
-    @MainActor
-    func isSnapToVisible() async -> Bool {
-        if let selected = cModel.selected[_uuid] {
-            return visibleItems[selected] != nil
-        }
-        return false
-    }
-    
-    @MainActor
-    func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
-        if let selected = cModel.selected[_uuid] {
-            proxy.scrollTo(selected, anchor: .center)
-        }
-        return 1
-    }*/
     
     func earliestVisible() -> YM {
         if visibleItems.count > 0 {
@@ -334,14 +304,10 @@ public struct MonthView : View {
             doSub = true
         }
         self.begin = begin
-        // self.begin = mit.weekday + 7 - ymDateFormatter.firstWeekdayAdjustment
         self.end = self.begin + monthInfo.numDays - 1
-        // self.end = mit.weekday + mit.count + 6 - ymDateFormatter.firstWeekdayAdjustment // where 6 is from -1 + 7
         self._fontSize = fontSize
         self.weekdayAdjustment = -monthInfo.weekday - 6 + ymDateFormatter.firstWeekdayAdjustment - (doSub ? 7 : 0)
-        
     }
-    
     
     public var body: some View {
         LazyVGrid(columns: dayItemLayout) {
