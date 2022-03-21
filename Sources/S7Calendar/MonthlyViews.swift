@@ -6,8 +6,8 @@ public struct WrappedMonthsView<Content: View> : View {
     
     let monthsView: Content
     
-    let model: MonthsViewModel
-    let cModel: CalendarModel
+    @ObservedObject var model: MonthsViewModel
+    @ObservedObject var cModel: CalendarModel
 
     let toSelect: Int
     let uuid: UUID
@@ -230,9 +230,7 @@ public class MonthsViewModel : ObservableObject {
     @MainActor
     func isSnapToVisible() async -> Bool {
         if let selected = cModel.selected[_uuid] {
-            if let selected = selected {
-                return visibleItems[selected] != nil
-            }
+            return visibleItems[selected] != nil
         }
         return false
     }
@@ -240,9 +238,7 @@ public class MonthsViewModel : ObservableObject {
     @MainActor
     func doScrollSnap(_ proxy: ScrollViewProxy) async -> Int {
         if let selected = cModel.selected[_uuid] {
-            if let selected = selected {
-                proxy.scrollTo(selected, anchor: .center)
-            }
+            proxy.scrollTo(selected, anchor: .center)
         }
         return 1
     }
@@ -323,7 +319,10 @@ public struct MonthView : View {
             ForEach( (1..<50) ) { i in
                 if i>=begin && i<=end  {
                     let day = i + weekdayAdjustment
+                    NavigationLink(destination: WrappedWeekView(calendarModel.weekView,
+                                                                calendarModel.weekView!.getTagForDay(day: day, monthInfo: monthInfo))) {
                     calendarModel.cellBuilder.monthlyViewDayCell(calendarModel, monthInfo, day, fontSize)
+                    }
                 } else if i == begin - 7 {
                     calendarModel.cellBuilder.monthlyViewNameCell(calendarModel, monthInfo, fontSize)
                 } else {

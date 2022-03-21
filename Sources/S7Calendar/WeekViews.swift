@@ -7,13 +7,17 @@ public struct WrappedWeekView<Content: View> : View {
     let weekView: Content
     
     @ObservedObject var model: WeekViewModel
+    @ObservedObject var cModel: CalendarModel
     
     let toSelect: Int
+    let uuid: UUID
     
     public init(_ content: Content, _ toSelect: Int) {
         self.weekView = content
         let wv = content as! WeekView
         self.model = wv.model
+        self.cModel = wv.calendarModel
+        self.uuid = wv.uuid
         self.toSelect = toSelect
     }
     
@@ -23,7 +27,7 @@ public struct WrappedWeekView<Content: View> : View {
                 if self.model.userNavSelection != nil {
                     self.model.userNavSelection = nil
                 } else {
-                    self.model.selected = toSelect
+                    self.cModel.selected[uuid] = toSelect
                 }
             }
     }
@@ -34,12 +38,26 @@ public struct WrappedWeekView<Content: View> : View {
  The WeekView runs over all the days, months, years in the CalendarModel
  */
 
-public struct WeekView: View {
+public struct WeekView: View, CalendarView {
     
+    public var uuid: UUID {
+        get {
+            model._uuid
+        }
+    }
+    
+    public var calendarModel: CalendarModel {
+        get {
+            return cModel
+        }
+        
+    }
+    
+
     @Environment(\.presentationMode) var presentationMode
     
     @ObservedObject var model : WeekViewModel
-    @ObservedObject var  calendarModel: CalendarModel
+    @ObservedObject var  cModel: CalendarModel
     
     @State var cellWidth: CGFloat = 55.0
     @State var useH: CGFloat = 55.0
@@ -47,9 +65,9 @@ public struct WeekView: View {
     let numDays : Int
     
     public init(calendarModel: CalendarModel, begin: String, numDays: Int) {
-        self.calendarModel = calendarModel
+        self.cModel = calendarModel
         self.numDays = numDays
-        self.model = WeekViewModel(beginAroundYMD: begin, numDays: numDays)
+        self.model = WeekViewModel(beginAroundYMD: begin, numDays: numDays, calendarModel: calendarModel)
     }
     
     public func getTagForDay(day: Int, monthInfo: MonthInfo) -> Int {
@@ -57,6 +75,8 @@ public struct WeekView: View {
     }
     
     public var body: some View {
+        let _ = Self._printChanges()
+        
         VStack(spacing: 0) {
             NavBarColorsView(calendarModel)
 
@@ -83,7 +103,7 @@ public struct WeekView: View {
                         .frame(width: cellWidth)
                         .background(.blue)
                     }
-                    .onChange(of: model.selected) { v in
+                    .onChange(of: cModel.selected[uuid]) { v in
                         Task.detached {
                             await model.waitAndClear()
                             await model.setYMD()
@@ -114,7 +134,7 @@ public struct WeekView: View {
         .navigationBarItems(leading:
                                 Button(action: {
             if let monthsView = calendarModel.monthsView {
-                let ymd = model.getYMD(model.selected)
+                let ymd = model.getYMD(cModel.selected[uuid]!)
                 let ymdMonth = YMD(ymd.year, ymd.month, 1)
                 let monthTag = monthsView.model.getTag(ymdMonth)
                 monthsView.model.backFromWeek = monthTag
@@ -125,7 +145,7 @@ public struct WeekView: View {
                 Image(systemName: "arrow.left")
             }
         }, trailing:
-                                calendarModel.cellBuilder.dayViewAdditionLink(calendarModel, model.getYMD(model.selected), "userNav",  $model.userNavSelection)
+                                calendarModel.cellBuilder.dayViewAdditionLink(calendarModel, model.getYMD(cModel.selected[uuid] ?? 1), "userNav",  $model.userNavSelection)
         )
         
     }
@@ -139,15 +159,15 @@ public struct WeekView: View {
     @ViewBuilder
     func buildButton(_ i:Int, _ proxy: ScrollViewProxy) -> some View {
         Button(action: {
-            model.selected = i
+            cModel.selected[uuid] = i
         })
         {
             Image(systemName: "circle.fill")
                 .font(.largeTitle)
-                .foregroundColor( model.selected == i ? .black : .white)
+                .foregroundColor( cModel.selected[uuid] == i ? .black : .white)
                 .overlay(
                     Text(model.dayLabels[i])
-                        .foregroundColor( model.selected == i ? .white : .black ))
+                        .foregroundColor( cModel.selected[uuid] == i ? .white : .black ))
         }
         .onAppear {
             model.visibleItems[Int(i)] = true
@@ -160,8 +180,9 @@ public struct WeekView: View {
 }
 
 class WeekViewModel : ObservableObject {
+   
+    var _uuid = UUID.init()
     
-    @Published var selected: Int = 1
     @Published var selectedYMD: String
     @Published var userNavSelection: String? = nil
     
@@ -179,7 +200,11 @@ class WeekViewModel : ObservableObject {
     var tagsByYMD: [YMD:Int] = [:]
     var tagsById: [Int:YMD] = [:]
     
-    init(beginAroundYMD: String, numDays: Int) {
+    let cModel: CalendarModel
+
+    
+    init(beginAroundYMD: String, numDays: Int, calendarModel: CalendarModel) {
+        self.cModel = calendarModel
         self.origin = CurrentValueSubject<CGPoint, Never>(.zero)
         self.originPublisher = self.origin
             .debounce(for: .seconds(0.2), scheduler: DispatchQueue.main)
@@ -262,13 +287,13 @@ class WeekViewModel : ObservableObject {
     
     @MainActor
     func isSnapToVisible() async -> Bool {
-        let snapTo = Int(Double(selected-1)/7.0) * 7 + 1
+        let snapTo = Int(Double(cModel.selected[_uuid]!-1)/7.0) * 7 + 1
         return visibleItems[snapTo] != nil
     }
     
     @MainActor
     func doScrollSnap(_ proxy: ScrollViewProxy) async {
-        let snapTo = Int(Double(selected-1)/7.0) * 7 + 1
+        let snapTo = Int(Double(cModel.selected[_uuid]!-1)/7.0) * 7 + 1
         proxy.scrollTo(snapTo, anchor: .leading)
     }
     
@@ -291,11 +316,12 @@ class WeekViewModel : ObservableObject {
             }
             self.setupSubscription(proxy)
             
-            let mod = selected % 7
+            let mod = cModel.selected[_uuid]! % 7
             let pos = mod == 0 ? 6 : mod - 1
-            self.selected = target + pos
-            
-            
+            if cModel.selected[_uuid] != target + pos {
+                cModel.selected[_uuid] = target + pos
+            }
+        
         }
     }
     
@@ -321,7 +347,7 @@ class WeekViewModel : ObservableObject {
     
     @MainActor
     func setYMD() {
-        dayComponent.day = selected - 1
+        dayComponent.day = cModel.selected[_uuid]! - 1
         let selectedDate = ymDateFormatter.addComponents(components: dayComponent, to: firstDay)
         selectedYMD = ymDateFormatter.getYMDString(selectedDate)
     }

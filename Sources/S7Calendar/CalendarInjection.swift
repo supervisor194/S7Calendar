@@ -170,8 +170,8 @@ public class CalendarModel : ObservableObject {
     let config : CalendarConfig
     let cellBuilder : CellBuilder
     
-    @Published var selected: [UUID: Int?] = [:]
-    @Published var subSelection: [UUID: Int?] = [:]
+    @Published var selected: [UUID: Int] = [:]
+    @Published var subSelection: [UUID: Int] = [:]
     @Published var navTo: [NavTo]? = nil
     
     @Published var weekViewVisible = false
