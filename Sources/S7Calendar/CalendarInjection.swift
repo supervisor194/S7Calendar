@@ -192,9 +192,7 @@ public class CalendarModel : ObservableObject {
     let config : CalendarConfig
     let cellBuilder : CellBuilder
     
-    // @Published var selected: [UUID: Int] = [:]
-    // @Published var subSelection: [UUID: Int] = [:]
-    @Published var navTo: [NavTo]? = nil
+    var navTo: [NavTo]? = nil
     
     @Published var weekViewVisible = false
     @Published var monthsViewVisible = false
@@ -202,6 +200,14 @@ public class CalendarModel : ObservableObject {
     
     public func setYearlyViewVisible(_ b: Bool) {
         self.yearlyViewVisible = b
+    }
+    
+    public func setMonthsViewVisible(_ b: Bool) {
+        self.monthsViewVisible = b
+    }
+    
+    public func setWeekViewVisible(_ b: Bool) {
+        self.weekViewVisible = b
     }
     
     public func setNavTo(_ navTo: [NavTo]?) {
@@ -269,7 +275,7 @@ public class CalendarModel : ObservableObject {
                     self.yearlyViewVisible = false
                 }
         } else if let monthsView = monthsView {
-            monthsView
+            WrappedMonthsView(self, monthsView.getIdForToday())
                 .onAppear {
                     self.monthsViewVisible = true
                 }

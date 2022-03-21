@@ -84,6 +84,10 @@ public struct MonthsView : View, CalendarView {
         return id
     }
     
+    public func getIdForToday() -> Int {
+        model.findMonthForToday()
+    }
+    
     func createMonthView(_ i: Int) -> MonthView {
         if let v = model.monthView[i] {
             return v
