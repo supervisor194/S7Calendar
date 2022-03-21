@@ -6,14 +6,20 @@ import Combine
 public protocol CalendarView {
     var uuid: UUID { get }
     var calendarModel: CalendarModel { get }
+    var viewModel: CalendarViewModel { get }
+}
+
+public protocol CalendarViewModel {
+    var selected: Int? { get set }
+    var subSelected: Int? { get set }
 }
 
 public struct NavTo {
-    var view: UUID
+    var view: CalendarView
     var id: Int?
     var subId: Int?
     
-    public init(view: UUID, id: Int? = nil, subId: Int? = nil) {
+    public init(view: CalendarView, id: Int? = nil, subId: Int? = nil) {
         self.view = view
         self.id = id
         self.subId = subId
@@ -186,8 +192,8 @@ public class CalendarModel : ObservableObject {
     let config : CalendarConfig
     let cellBuilder : CellBuilder
     
-    @Published var selected: [UUID: Int] = [:]
-    @Published var subSelection: [UUID: Int] = [:]
+    // @Published var selected: [UUID: Int] = [:]
+    // @Published var subSelection: [UUID: Int] = [:]
     @Published var navTo: [NavTo]? = nil
     
     @Published var weekViewVisible = false
@@ -289,10 +295,12 @@ public class CalendarModel : ObservableObject {
         
         while navTo!.count > 0 {
             let nt = navTo!.first!
+            var vm = nt.view.viewModel
             
-            selected[nt.view] = nt.id
-            subSelection[nt.view] = nt.subId
+            vm.selected = nt.id
+            vm.subSelected = nt.subId
             
+
             navTo!.remove(at: 0)
         
         }

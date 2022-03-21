@@ -25,13 +25,13 @@ public struct WrappedYearlyView : View {
             .onAppear {
                 if let backFromMonths = self.model.backFromMonths {
                     self.model.backFromMonths = nil
-                    self.cModel.selected[uuid] = model.buildId(y:backFromMonths.y, m:backFromMonths.m)
+                    self.model.selected = model.buildId(y:backFromMonths.y, m:backFromMonths.m)
                 } else {
-                    self.cModel.selected[uuid] = toSelect
+                    self.model.selected = toSelect
                 }
             }
             .onDisappear {
-                self.cModel.selected[uuid] = nil
+                self.model.selected = nil
             }
             
     }
@@ -39,7 +39,7 @@ public struct WrappedYearlyView : View {
 
 @available(iOS 15.0, *)
 public struct YearlyView: View, CalendarView {
-    
+
     var _uuid = UUID.init()
     
     public var uuid: UUID {
@@ -54,8 +54,14 @@ public struct YearlyView: View, CalendarView {
         }
         
     }
-
     
+    
+    public var viewModel : CalendarViewModel {
+        get {
+            return model
+        }
+    }
+
     @ObservedObject var model: YearlyViewModel
     @ObservedObject var  cModel: CalendarModel
     
@@ -104,8 +110,8 @@ public struct YearlyView: View, CalendarView {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .onChange(of: cModel.selected[_uuid]) { v in
-                        if let target = cModel.selected[_uuid] {
+                    .onChange(of: model.selected) { v in
+                        if let target = model.selected {
                             withAnimation {
                                 proxy.scrollTo(target, anchor: .center)
                             }
@@ -127,10 +133,10 @@ public struct YearlyView: View, CalendarView {
                 Button( action: {
                     // todo: perhaps use TodayInfo ???
                     let idForToday = model.idForToday()
-                    if cModel.selected[_uuid] == idForToday {
-                        cModel.subSelection[_uuid] = idForToday
+                    if model.selected == idForToday {
+                        model.subSelected = idForToday
                     }
-                    cModel.selected[_uuid] = idForToday
+                    model.selected = idForToday
                 }) {
                     Text("Today")
                         .foregroundColor(cModel.colors.navIcons)
@@ -150,10 +156,11 @@ public struct YearlyView: View, CalendarView {
                 .padding(.top, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else if ym.m > 0 {
+            // todo : if let monthsview
             NavigationLink(destination: WrappedMonthsView(cModel,
                                                           model.toMonthsMonth(ym)),
                            tag: model.toMonthsMonth(ym),
-                           selection: $cModel.subSelection[_uuid]) {
+                           selection: $model.subSelected) {
                 YearlyMonthView(year: ym.y, month: ym.m, calendarModel: cModel,
                                 fontSize: $fontSize, columnWidth: $columnWidth, cellWidth: $cellWidth)
             }
@@ -164,9 +171,9 @@ public struct YearlyView: View, CalendarView {
                            }
                            .onDisappear {
                                model.visibleItems.removeValue(forKey: c)
-                               if let selected = cModel.selected[_uuid] {
+                               if let selected = model.selected {
                                    if selected == c {
-                                       cModel.selected[_uuid] = nil
+                                       model.selected = nil
                                    }
                                }
                            }
@@ -180,14 +187,16 @@ public struct YearlyView: View, CalendarView {
 }
 
 @available(iOS 15.0, macOS 11.0, *)
-class YearlyViewModel : ObservableObject {
+class YearlyViewModel : ObservableObject, CalendarViewModel {
     
-    // @Published var selected: Int? = nil
-            
+    @Published public var selected: Int?
+    
+    @Published public var subSelected: Int?
+
+    
     var visibleItems: [Int: Bool] = [:]
     
     let baseYear: Int
-    
     let firstMonth: Date
     let beginningMonthInfo: MonthInfo
     let numYears: Int
@@ -242,6 +251,7 @@ class YearlyViewModel : ObservableObject {
     }
      */
     
+    // todo: should move to MonthlyViews
     func toMonthsMonth(_ ym: YM) -> Int {
         (ym.y - baseYear) * 12 + ym.m
     }

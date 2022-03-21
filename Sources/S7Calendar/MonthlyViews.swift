@@ -25,13 +25,13 @@ public struct WrappedMonthsView: View {
             .onAppear {
                 if let backFromWeek = self.model.backFromWeek {
                     self.model.backFromWeek = nil
-                    self.cModel.selected[uuid] = backFromWeek
+                    self.model.selected = backFromWeek
                 } else {
-                    self.cModel.selected[uuid] = toSelect
+                    self.model.selected = toSelect
                 }
             }
             .onDisappear {
-                self.cModel.selected[uuid] = nil
+                self.model.selected = nil
             }
     }
     
@@ -40,6 +40,12 @@ public struct WrappedMonthsView: View {
 
 
 public struct MonthsView : View, CalendarView {
+    public var viewModel: CalendarViewModel {
+        get {
+            model
+        }
+    }
+    
     
     public var uuid: UUID {
         get {
@@ -82,7 +88,7 @@ public struct MonthsView : View, CalendarView {
         if let v = model.monthView[i] {
             return v
         }
-        let v = MonthView(ymd: model.getYMD(i), calendarModel: cModel, fontSize: $fontSize)
+        let v = MonthView(ymd: model.getYMD(i), calendarModel: cModel, parentModel: model, fontSize: $fontSize)
         model.monthView[i] = v
         return v
     }
@@ -106,8 +112,8 @@ public struct MonthsView : View, CalendarView {
                             
                         }.frame(maxWidth: .infinity)
                     }
-                    .onChange(of: cModel.selected[uuid]) { v in
-                        if let target = cModel.selected[uuid] {
+                    .onChange(of: model.selected) { v in
+                        if let target = model.selected {
                             withAnimation {
                                 proxy.scrollTo(target, anchor: .center)
                             }
@@ -161,7 +167,10 @@ public struct MonthsView : View, CalendarView {
 
 
 
-public class MonthsViewModel : ObservableObject {
+public class MonthsViewModel : ObservableObject, CalendarViewModel {
+    
+    @Published public var selected: Int?
+    @Published public var subSelected: Int?
     
     var _uuid = UUID.init()
 
@@ -284,11 +293,17 @@ public class MonthsViewModel : ObservableObject {
     
 }
 
+public class MonthViewModel : ObservableObject, CalendarViewModel {
+    
+    @Published public var selected: Int?
+    @Published public var subSelected: Int?
+    
+}
 
 public struct MonthView : View {
     
     @ObservedObject var calendarModel: CalendarModel
-
+    @ObservedObject var model:  MonthsViewModel
     @Binding var fontSize: CGFloat
     
     let monthInfo: MonthInfo
@@ -301,8 +316,9 @@ public struct MonthView : View {
                                             GridItem(.flexible(minimum: 5, maximum: 100),  spacing: 0), count: 7)
     
     
-    init(ymd: YMD, calendarModel: CalendarModel, fontSize: Binding<CGFloat>) {
+    init(ymd: YMD, calendarModel: CalendarModel, parentModel: MonthsViewModel, fontSize: Binding<CGFloat>) {
         self.calendarModel = calendarModel
+        self.model = parentModel
         self.uuid = calendarModel.monthsView!.uuid
         
         self.monthInfo = ymDateFormatter.monthInfo(ymd: ymd)
@@ -328,10 +344,15 @@ public struct MonthView : View {
             ForEach( (1..<50) ) { i in
                 if i>=begin && i<=end  {
                     let day = i + weekdayAdjustment
-                    NavigationLink(destination: WrappedWeekView(calendarModel,
-                                                                calendarModel.weekView!.getTagForDay(day: day, monthInfo: monthInfo)),
-                                   tag: calendarModel.monthsView!.idForYMD(YMD(monthInfo.year, monthInfo.month, day)),
-                                   selection: $calendarModel.subSelection[uuid]) {
+                    if let weekView = calendarModel.weekView {
+                        let id = weekView.getIdForYMD(YMD(monthInfo.year, monthInfo.month, day))
+                        NavigationLink(destination: WrappedWeekView(calendarModel, id),
+                                       tag: id,
+                                       selection: $model.subSelected) {
+                            calendarModel.cellBuilder.monthlyViewDayCell(calendarModel, monthInfo, day, fontSize)
+                        }
+                    }
+                    else {
                         calendarModel.cellBuilder.monthlyViewDayCell(calendarModel, monthInfo, day, fontSize)
                     }
                 } else if i == begin - 7 {
@@ -340,9 +361,8 @@ public struct MonthView : View {
                     calendarModel.cellBuilder.monthlyViewEmptyCell(calendarModel, fontSize)
                 }
             }
-            
         }
-        
     }
+    
 }
 
