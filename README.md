@@ -17,18 +17,39 @@ public let cml = CalendarModelLoader.instance
 @main
 struct S7CApp: App {
     
+    @ObservedObject var cModel = CalendarModel(MyConfig())
+    
     init() {
-      cml.addModel(CalendarModel(MyConfig()))
+        CalendarModelLoader.instance.addModel(cModel)
+        let ym = YM(y:2023, m:6)
+        let ymd = YMD(2023, 6, 22)
+        // let id = cModel.yearlyView?.getIdForYM(ym)
+        let id:Int?  = nil
+        let subId: Int = cModel.yearlyView!.toMonthsMonth(ym)
+        let subId2: Int = cModel.monthsView!.idForYMD(ymd)
+        print("dayId: \(subId2)")
+        let navTo =  [ NavTo(view: cModel.yearlyView!, id: id, subId: subId),
+                       NavTo(view: cModel.monthsView!, subId: subId2) ]
+        cModel.setNavTo(navTo)
     }
     
     var body: some Scene {
         WindowGroup {
             NavigationView {
-                WrappedYearlyView(cml.getModel("foo").yearlyView, cml.getModel("foo").yearlyView!.getIdForToday())
+                WrappedYearlyView(cModel, cModel.yearlyView!.getIdForToday())
+                    .onAppear {
+                        cModel.setYearlyViewVisible(true)
+                    }
+                    .onDisappear {
+                        cModel.setYearlyViewVisible(false)
+                    }
             }
-           
+            .onAppear {
+                Task.detached {
+                    await cModel.navigateOnAppear()
+                }
+            }
             .navigationViewStyle(StackNavigationViewStyle())
-            .background(.green)
         }
     }
 }
@@ -104,22 +125,18 @@ struct MyMonthlyViewDayCell : View {
     let day: Int
     let fontSize: CGFloat
     
-    @ViewBuilder
     var body: some View {
-        NavigationLink(destination: WrappedWeekView(model.weekView, model.weekView!.getTagForDay(day: day, monthInfo: monthInfo))) {
-            VStack {
-                Divider()
-                Text(String(day))
-                    .font(.system(size: fontSize))
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                    .padding([.top, .bottom], 10)
-                    .foregroundColor(dayColor(day: day))
-                Image(systemName: "circle.fill")
-                    .font(.system(size: fontSize*0.5))
-                Spacer()
-            }//.frame(maxWidth: .infinity, minHeight: 70)
-            
+        VStack {
+            Divider()
+            Text(String(day))
+                .font(.system(size: fontSize))
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .padding([.top, .bottom], 10)
+                .foregroundColor(dayColor(day: day))
+            Image(systemName: "circle.fill")
+                .font(.system(size: fontSize*0.5))
+            Spacer()
         }
     }
     
@@ -181,9 +198,7 @@ struct MyDayViewHourCell : View {
         HStack() {
             if hour == 8 {
                 ForEach( (1...5), id: \.self) { i in
-                    
                     NavigationLink(destination: MyMeetingView()) {
-                        
                         Rectangle().fill(.cyan).frame(maxWidth: .infinity, minHeight: 75)
                             .overlay(Text(String("My Big Meeting " + String(i))))                       .border(.blue)
                     }
