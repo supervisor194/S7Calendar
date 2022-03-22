@@ -96,7 +96,9 @@ public struct WeekView: View, CalendarView {
             }
             .background(calendarModel.colors.weekViewHeader)
             ScrollViewReader { proxy in
-                OriginAwareScrollView(name: calendarModel.name, axes: [.horizontal], showIndicators: false, onOriginChange: { model.origin.send($0) }) {
+                OriginAwareScrollView(name: calendarModel.name, axes: [.horizontal], showIndicators: false, onOriginChange: {
+                    model.origin.send($0)
+                }) {
                     LazyHStack(spacing:0) {
                         ForEach( (1...model.numDays), id: \.self) { i in
                             buildButton(i, proxy)
@@ -124,12 +126,14 @@ public struct WeekView: View, CalendarView {
                     }
                 }
                 .background(.red)
-                .coordinateSpace(name: calendarModel.name)
             }
+            .coordinateSpace(name: calendarModel.name)
+
             // .padding(0)
             
             DayView(calendarModel: calendarModel, ymd: model.selectedYMD)
         }
+        
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(leading:
@@ -148,6 +152,14 @@ public struct WeekView: View, CalendarView {
         }, trailing:
                                 calendarModel.cellBuilder.dayViewAdditionLink(calendarModel, model.getYMD(model.selected ?? 1), "userNav",  $model.userNavSelection)
         )
+        .onAppear {
+            cModel.weekViewVisible = true
+            model.isVisible = true
+        }
+        .onDisappear {
+            cModel.weekViewVisible = false
+            model.isVisible = false
+        }
         
     }
     
@@ -181,6 +193,11 @@ public struct WeekView: View, CalendarView {
 }
 
 class WeekViewModel : ObservableObject, CalendarViewModel {
+    
+    var name: String = "WeekViewModel"
+    
+    var isVisible: Bool = false 
+    
     
     @Published public var selected: Int?
     @Published public var subSelected: Int?
@@ -302,19 +319,17 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
     
     func setupSubscription(_ proxy: ScrollViewProxy) {
         subscription = originPublisher.sink { [unowned self] v in
+            // self.subscription?.cancel()
             let target = self.snap()
-            self.subscription?.cancel()
             withAnimation {
                 proxy.scrollTo(target, anchor: .leading)
             }
-            self.setupSubscription(proxy)
-            
+            // self.setupSubscription(proxy)
             let mod = selected! % 7
             let pos = mod == 0 ? 6 : mod - 1
             if selected != target + pos {
                 selected = target + pos
             }
-            
         }
     }
     
@@ -411,6 +426,14 @@ struct ScrollOriginPreferenceKey: PreferenceKey {
     static func reduce(value: inout Value, nextValue:()->Value) { }
 }
 
+struct SOPreferenceKey : PreferenceKey {
+    typealias Value = CGPoint
+    static var defaultValue: Value = .zero
+    static func reduce(value: inout Value, nextValue: () -> Value) {
+        value = nextValue()
+    }
+}
+
 struct OriginAwareScrollView<Content:View> : View {
     let axes: Axis.Set
     let showIndicators: Bool
@@ -426,20 +449,66 @@ struct OriginAwareScrollView<Content:View> : View {
         self.content = content()
     }
     
+     var body: some View {
+         ScrollView(axes, showsIndicators: showIndicators) {
+             ZStack {
+             Text("0")
+                 .frame(maxWidth: .infinity)
+                 .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: proxy.frame(in: .named("foo")))
+                    })
+                 VStack(spacing: 0) {
+                 content
+                 }
+             }
+         }
+         .fixedSize(horizontal: false, vertical: true)
+         .background(.red)
+         .coordinateSpace(name: "foo")
+         .onPreferenceChange(ScrollOriginPreferenceKey.self) { value in
+             onOriginChange(value.origin)
+         }
+     }
+    /*
+     var body: some View {
+         ScrollView(axes, showsIndicators: showIndicators) {
+             ZStack {
+                 GeometryReader { geometry in
+                     Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: geometry.frame(in: .named("foo")))
+                 }.frame(width:0,height:0)
+                 VStack(spacing: 0) {
+                 content
+                 }
+             }.fixedSize(horizontal: false, vertical: true).background(.red)
+             
+         }
+         .coordinateSpace(name: "foo")
+         .onPreferenceChange(ScrollOriginPreferenceKey.self) { value in
+             onOriginChange(value.origin)
+         }
+     }
+     */
+    
+    /*
     var body: some View {
         ScrollView(axes, showsIndicators: showIndicators) {
             VStack(spacing: 0) {
                 GeometryReader { geometry in
-                    Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: geometry.frame(in: .named(name)))
+                    Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: geometry.frame(in: .named("foo")))
                 }.frame(width:0,height:0)
                 content
             }.fixedSize(horizontal: false, vertical: true).background(.red)
             
         }
+        .coordinateSpace(name: "foo")
         .onPreferenceChange(ScrollOriginPreferenceKey.self) { value in
             onOriginChange(value.origin)
         }
     }
+     */
+     
+    
 }
 
 

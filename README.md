@@ -23,13 +23,10 @@ struct S7CApp: App {
         CalendarModelLoader.instance.addModel(cModel)
         let ym = YM(y:2023, m:6)
         let ymd = YMD(2023, 6, 22)
-        // let id = cModel.yearlyView?.getIdForYM(ym)
-        let id:Int?  = nil
-        let subId: Int = cModel.yearlyView!.toMonthsMonth(ym)
-        let subId2: Int = cModel.monthsView!.idForYMD(ymd)
-        print("dayId: \(subId2)")
-        let navTo =  [ NavTo(view: cModel.yearlyView!, id: id, subId: subId),
-                       NavTo(view: cModel.monthsView!, subId: subId2) ]
+        let monthsViewId: Int = cModel.yearlyView!.toMonthsMonth(ym)
+        let weekViewId = cModel.weekView!.getIdForYMD(ymd)
+        let navTo =  [ NavTo(view: cModel.yearlyView!, subId: monthsViewId),
+                       NavTo(view: cModel.monthsView!, subId: weekViewId) ]
         cModel.setNavTo(navTo)
     }
     
@@ -37,12 +34,6 @@ struct S7CApp: App {
         WindowGroup {
             NavigationView {
                 WrappedYearlyView(cModel, cModel.yearlyView!.getIdForToday())
-                    .onAppear {
-                        cModel.setYearlyViewVisible(true)
-                    }
-                    .onDisappear {
-                        cModel.setYearlyViewVisible(false)
-                    }
             }
             .onAppear {
                 Task.detached {

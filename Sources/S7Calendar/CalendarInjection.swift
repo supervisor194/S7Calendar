@@ -10,8 +10,10 @@ public protocol CalendarView {
 }
 
 public protocol CalendarViewModel {
+    var name: String { get }
     var selected: Int? { get set }
     var subSelected: Int? { get set }
+    var isVisible: Bool { get set }
 }
 
 public struct NavTo {
@@ -293,22 +295,28 @@ public class CalendarModel : ObservableObject {
         }
     }
     
+    @MainActor
+    func doSelects(vm: inout CalendarViewModel, id: Int?, subId: Int?) async {
+        if let id = id {
+            vm.selected = id
+        }
+        if let subId = subId {
+            vm.subSelected = subId
+        }
+    }
+    
     public func navigateOnAppear() async {
-       
         if navTo == nil {
             return
         }
-        
         while navTo!.count > 0 {
             let nt = navTo!.first!
             var vm = nt.view.viewModel
-            
-            vm.selected = nt.id
-            vm.subSelected = nt.subId
-            
-
+            while !vm.isVisible {
+                try? await Task.sleep(nanoseconds: UInt64(1000000000*1.0/10.0))
+            }
+            await doSelects(vm: &vm, id: nt.id, subId: nt.subId)
             navTo!.remove(at: 0)
-        
         }
     }
 }

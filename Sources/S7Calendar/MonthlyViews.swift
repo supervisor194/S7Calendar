@@ -40,6 +40,9 @@ public struct WrappedMonthsView: View {
 
 
 public struct MonthsView : View, CalendarView {
+    
+    var isVisible: Bool = false
+    
     public var viewModel: CalendarViewModel {
         get {
             model
@@ -96,7 +99,7 @@ public struct MonthsView : View, CalendarView {
             ScrollViewReader { proxy in
                 ScrollView() {
                     LazyVStack(spacing: 20) {
-                        ForEach(1..<model.numMonths) { i  in
+                        ForEach(1..<model.numMonths, id:\.self) { i  in
                             createMonthView(i)
                                 .id(i)
                                 .onAppear {
@@ -152,6 +155,14 @@ public struct MonthsView : View, CalendarView {
             }
             
         }
+        .onAppear {
+            cModel.monthsViewVisible = true
+            model.isVisible = true
+        }
+        .onDisappear {
+            cModel.monthsViewVisible = false
+            model.isVisible = false
+        }
     }
 }
 
@@ -159,6 +170,10 @@ public struct MonthsView : View, CalendarView {
 
 
 public class MonthsViewModel : ObservableObject, CalendarViewModel {
+    
+    public var name: String = "MonthsViewModel"
+    
+    public var isVisible: Bool = false
     
     @Published public var selected: Int?
     @Published public var subSelected: Int?
@@ -268,6 +283,10 @@ public class MonthsViewModel : ObservableObject, CalendarViewModel {
 }
 
 public class MonthViewModel : ObservableObject, CalendarViewModel {
+    
+    public var name: String = "MonthViewModel"
+    
+    public var isVisible: Bool = false
     
     @Published public var selected: Int?
     @Published public var subSelected: Int?

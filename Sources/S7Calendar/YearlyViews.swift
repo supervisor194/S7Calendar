@@ -141,6 +141,14 @@ public struct YearlyView: View, CalendarView {
                 }
             }
         }
+        .onAppear {
+            cModel.yearlyViewVisible = true
+            model.isVisible = true
+        }
+        .onDisappear {
+            cModel.yearlyViewVisible = false
+            model.isVisible = false
+        }
     }
     
     @ViewBuilder
@@ -186,6 +194,10 @@ public struct YearlyView: View, CalendarView {
 
 @available(iOS 15.0, macOS 11.0, *)
 class YearlyViewModel : ObservableObject, CalendarViewModel {
+    
+    var name : String = "YearlyViewModel"
+    
+    var isVisible: Bool = false
     
     @Published public var selected: Int?
     @Published public var subSelected: Int?
