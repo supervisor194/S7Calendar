@@ -114,6 +114,10 @@ public struct WeekView: View, CalendarView {
                         }
                     }
                     .onAppear {
+                        model.setupSubscription(proxy)
+                    }
+                    /*
+                    .onAppear {
                         model.initSem()
                         Task.detached {
                             await model.doScrollSnap(proxy)
@@ -121,6 +125,8 @@ public struct WeekView: View, CalendarView {
                             await model.setupSubscription(proxy)
                         }
                     }
+                     */
+                    
                     .onDisappear {
                         model.subscription?.cancel()
                     }
@@ -319,12 +325,12 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
     
     func setupSubscription(_ proxy: ScrollViewProxy) {
         subscription = originPublisher.sink { [unowned self] v in
-            // self.subscription?.cancel()
+            self.subscription?.cancel()
             let target = self.snap()
             withAnimation {
                 proxy.scrollTo(target, anchor: .leading)
             }
-            // self.setupSubscription(proxy)
+            self.setupSubscription(proxy)
             let mod = selected! % 7
             let pos = mod == 0 ? 6 : mod - 1
             if selected != target + pos {
@@ -448,7 +454,7 @@ struct OriginAwareScrollView<Content:View> : View {
         self.onOriginChange = onOriginChange
         self.content = content()
     }
-    
+    /*
      var body: some View {
          ScrollView(axes, showsIndicators: showIndicators) {
              ZStack {
@@ -470,6 +476,7 @@ struct OriginAwareScrollView<Content:View> : View {
              onOriginChange(value.origin)
          }
      }
+     */
     /*
      var body: some View {
          ScrollView(axes, showsIndicators: showIndicators) {
@@ -490,23 +497,20 @@ struct OriginAwareScrollView<Content:View> : View {
      }
      */
     
-    /*
+    
     var body: some View {
         ScrollView(axes, showsIndicators: showIndicators) {
             VStack(spacing: 0) {
                 GeometryReader { geometry in
-                    Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: geometry.frame(in: .named("foo")))
+                    Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: geometry.frame(in: .named("name")))
                 }.frame(width:0,height:0)
                 content
             }.fixedSize(horizontal: false, vertical: true).background(.red)
-            
         }
-        .coordinateSpace(name: "foo")
         .onPreferenceChange(ScrollOriginPreferenceKey.self) { value in
             onOriginChange(value.origin)
         }
     }
-     */
      
     
 }
