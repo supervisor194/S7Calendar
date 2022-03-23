@@ -26,6 +26,7 @@ public struct WrappedWeekView : View {
                 if self.model.userNavSelection != nil {
                     self.model.userNavSelection = nil
                 } else {
+                    print("wanting to select: \(toSelect)")
                     self.model.selected = toSelect
                 }
             }
@@ -120,9 +121,6 @@ public struct WeekView: View, CalendarView {
                             await model.setupSubscription(proxy)
                         }
                     }
-                    .onAppear {
-                        model.setupSubscription(proxy)
-                    }
                     .onDisappear {
                         model.subscription?.cancel()
                     }
@@ -144,6 +142,7 @@ public struct WeekView: View, CalendarView {
                 let ymd = model.getYMD(model.selected!)
                 let ymdMonth = YMD(ymd.year, ymd.month, 1)
                 let monthTag = monthsView.model.getTag(ymdMonth)
+                print("back to: \(monthTag)")
                 monthsView.model.backFromWeek = monthTag
             }
             self.presentationMode.wrappedValue.dismiss()
