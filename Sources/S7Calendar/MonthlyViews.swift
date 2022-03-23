@@ -27,6 +27,7 @@ public struct WrappedMonthsView: View {
                     self.model.backFromWeek = nil
                     self.model.selected = backFromWeek
                 } else {
+                    print("months view wanting to select: \(toSelect)")
                     self.model.selected = toSelect
                 }
             }
@@ -99,7 +100,7 @@ public struct MonthsView : View, CalendarView {
             ScrollViewReader { proxy in
                 ScrollView() {
                     LazyVStack(spacing: 20) {
-                        ForEach(1..<model.numMonths, id:\.self) { i  in
+                        ForEach(1..<model.numMonths+1, id:\.self) { i  in
                             createMonthView(i)
                                 .id(i)
                                 .onAppear {
@@ -195,6 +196,9 @@ public class MonthsViewModel : ObservableObject, CalendarViewModel {
     var begin: String
     let numMonths: Int
     
+    let earliest: YMD
+    let latest: YMD
+    
     var tagsByYMD : [YMD: Int] = [:]
     var tagsById : [Int:YMD] = [:]
     
@@ -220,12 +224,20 @@ public class MonthsViewModel : ObservableObject, CalendarViewModel {
         self.firstMonth = ymDateFormatter.getDate(ymd: begin)
         self.numMonths = numMonths
         
+        monthComponents.month = 1 - 1
+        let earliestDate = ymDateFormatter.addComponents(components: monthComponents, to: firstMonth)
+        self.earliest = ymDateFormatter.getYMD(date: earliestDate)
+        monthComponents.month = numMonths - 1
+        let latestDate = ymDateFormatter.addComponents(components: monthComponents, to: firstMonth)
+        self.latest = ymDateFormatter.getYMD(date: latestDate)
+        
         for month in 1...numMonths {
             monthComponents.month = month - 1
             let selectedDate = ymDateFormatter.addComponents(components: monthComponents, to: firstMonth)
             let ymd = ymDateFormatter.getYMD(date: selectedDate)
             addTag(ymd, month)
         }
+       
     }
     
     func addTag(_ ymd: YMD, _ month: Int) {
@@ -234,7 +246,14 @@ public class MonthsViewModel : ObservableObject, CalendarViewModel {
     }
     
     func getTag(_ ymd: YMD) -> Int {
-        tagsByYMD[ymd]!
+        if let tag = tagsByYMD[ymd] {
+            return tag
+        }
+        if ymd > latest {
+            return tagsByYMD[latest]!
+        }
+        return tagsByYMD[earliest]!
+        
     }
     
     func getYMD(_ id: Int) -> YMD {

@@ -52,7 +52,7 @@ public class LocalizedDateFormatter1 {
 
 public let ldf1 = LocalizedDateFormatter1()
 
-public struct YMD : Hashable {
+public struct YMD : Hashable, Comparable {
     public let year: Int
     public let month: Int
     public let day: Int
@@ -71,6 +71,17 @@ public struct YMD : Hashable {
     
     public static func == (lhs: YMD, rhs: YMD) -> Bool {
         lhs.day == rhs.day && lhs.month == rhs.month && lhs.year == rhs.year
+    }
+    
+    public static func < (lhs: YMD, rhs: YMD) -> Bool {
+        if lhs.year != rhs.year {
+            return lhs.year < rhs.year
+        }
+        if lhs.month != rhs.month {
+            return lhs.month < rhs.month
+        }
+        return lhs.day < rhs.day
+        
     }
 }
 

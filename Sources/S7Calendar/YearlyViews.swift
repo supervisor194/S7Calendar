@@ -247,7 +247,7 @@ class YearlyViewModel : ObservableObject, CalendarViewModel {
     }
     
     func idToYM(_ id: Int) -> YM {
-        let y = id / 15 + baseYear
+        let y = (id-1) / 15 + baseYear
         let m =  (id - 1) % 15 - 2
         return YM(y:y, m:m)
     }

@@ -107,26 +107,22 @@ public struct WeekView: View, CalendarView {
                         .background(.blue)
                     }
                     .onChange(of: model.selected) { v in
+                        model.cancelSubscription()
                         Task.detached {
-                            await model.waitAndClear()
                             await model.setYMD()
-                            await model.doScrollSnap(proxy)
+                            while await model.notShowing() {
+                                async let showing = model.doScrollSnap(proxy)
+                                if await showing {
+                                    break
+                                }
+                                try? await Task.sleep(nanoseconds: 100000000)
+                            }
+                            await model.setupSubscription(proxy)
                         }
                     }
                     .onAppear {
                         model.setupSubscription(proxy)
                     }
-                    /*
-                    .onAppear {
-                        model.initSem()
-                        Task.detached {
-                            await model.doScrollSnap(proxy)
-                            await model.signal()
-                            await model.setupSubscription(proxy)
-                        }
-                    }
-                     */
-                    
                     .onDisappear {
                         model.subscription?.cancel()
                     }
@@ -280,22 +276,6 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
         computeDayLabels(numDays: numDays)
     }
     
-    func initSem() {
-        sem = DispatchSemaphore(value: 0)
-    }
-    
-    func signal() async {
-        sem!.signal()
-    }
-    
-    func waitAndClear() {
-        if let sem = self.sem {
-            sem.wait()
-            self.sem = nil
-            return
-        }
-    }
-    
     func addTag(_ ymd: YMD, _ i:Int) {
         tagsByYMD[ymd] = i
         tagsById[i] = ymd
@@ -308,29 +288,31 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
     func getYMD(_ i:Int) -> YMD {
         tagsById[i]!
     }
-    
-    /*
-     @MainActor
-     func isSnapToVisible() async -> Bool {
-     let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
-     return visibleItems[snapTo] != nil
-     }
-     */
+
     
     @MainActor
-    func doScrollSnap(_ proxy: ScrollViewProxy) async {
+    func notShowing() async -> Bool {
+        let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
+        return visibleItems[snapTo] == nil || visibleItems[snapTo+6] == nil
+    }
+    
+    @MainActor
+    func doScrollSnap(_ proxy: ScrollViewProxy) async -> Bool {
         let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
         proxy.scrollTo(snapTo, anchor: .leading)
+        return visibleItems[snapTo] != nil && visibleItems[snapTo+6] != nil
+    }
+    
+    func cancelSubscription() {
+        subscription?.cancel()
     }
     
     func setupSubscription(_ proxy: ScrollViewProxy) {
         subscription = originPublisher.sink { [unowned self] v in
-            self.subscription?.cancel()
             let target = self.snap()
             withAnimation {
                 proxy.scrollTo(target, anchor: .leading)
             }
-            self.setupSubscription(proxy)
             let mod = selected! % 7
             let pos = mod == 0 ? 6 : mod - 1
             if selected != target + pos {
@@ -360,7 +342,7 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
     }
     
     @MainActor
-    func setYMD() {
+    func setYMD() async {
         dayComponent.day = selected! - 1
         let selectedDate = ymDateFormatter.addComponents(components: dayComponent, to: firstDay)
         selectedYMD = ymDateFormatter.getYMDString(selectedDate)
