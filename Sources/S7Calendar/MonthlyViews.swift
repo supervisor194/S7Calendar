@@ -100,7 +100,7 @@ public struct MonthsView : View, CalendarView {
             ScrollViewReader { proxy in
                 ScrollView() {
                     LazyVStack(spacing: 20) {
-                        ForEach(1..<model.numMonths+1, id:\.self) { i  in
+                        ForEach(1...model.numMonths, id:\.self) { i  in
                             createMonthView(i)
                                 .id(i)
                                 .onAppear {
