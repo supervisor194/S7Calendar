@@ -107,9 +107,14 @@ public struct WeekView: View, CalendarView {
                         .frame(width: cellWidth)
                         .background(.blue)
                     }
+                    .onAppear {
+                        model.setupSubscription(proxy)
+                    }
+                    .onDisappear {
+                        model.subscription?.cancel()
+                    }
                     .onChange(of: model.selected) { v in
-                        model.cancelSubscription()
-                        Task.detached {
+                        Task {
                             await model.setYMD()
                             while await model.notShowing() {
                                 async let showing = model.doScrollSnap(proxy)
@@ -118,18 +123,13 @@ public struct WeekView: View, CalendarView {
                                 }
                                 try? await Task.sleep(nanoseconds: 100000000)
                             }
-                            await model.setupSubscription(proxy)
+                            await model.doScrollSnap(proxy)
                         }
-                    }
-                    .onDisappear {
-                        model.subscription?.cancel()
                     }
                 }
                 .background(.red)
             }
             .coordinateSpace(name: calendarModel.name)
-
-            // .padding(0)
             
             DayView(calendarModel: calendarModel, ymd: model.selectedYMD)
         }
@@ -218,7 +218,6 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
     let origin: CurrentValueSubject<CGPoint, Never>
     let originPublisher: AnyPublisher<CGPoint, Never>
     var subscription: AnyCancellable? = nil
-    var sem: DispatchSemaphore? = nil
     
     var tagsByYMD: [YMD:Int] = [:]
     var tagsById: [Int:YMD] = [:]
@@ -288,17 +287,22 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
         tagsById[i]!
     }
 
+    func getLeading() -> Int {
+        Int(Double(selected!-1)/7.0) * 7 + 1
+    }
     
     @MainActor
     func notShowing() async -> Bool {
-        let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
+        let snapTo = getLeading()
         return visibleItems[snapTo] == nil || visibleItems[snapTo+6] == nil
     }
     
     @MainActor
     func doScrollSnap(_ proxy: ScrollViewProxy) async -> Bool {
-        let snapTo = Int(Double(selected!-1)/7.0) * 7 + 1
-        proxy.scrollTo(snapTo, anchor: .leading)
+        let snapTo = getLeading()
+        withAnimation {
+            proxy.scrollTo(snapTo, anchor: .leading)
+        }
         return visibleItems[snapTo] != nil && visibleItems[snapTo+6] != nil
     }
     
@@ -306,6 +310,7 @@ class WeekViewModel : ObservableObject, CalendarViewModel {
         subscription?.cancel()
     }
     
+    @MainActor
     func setupSubscription(_ proxy: ScrollViewProxy) {
         subscription = originPublisher.sink { [unowned self] v in
             let target = self.snap()
@@ -407,18 +412,10 @@ struct HourView : View {
 }
 
 
-struct ScrollOriginPreferenceKey: PreferenceKey {
-    typealias Value = CGRect
-    static var defaultValue: Value = .zero
-    static func reduce(value: inout Value, nextValue:()->Value) { }
-}
-
-struct SOPreferenceKey : PreferenceKey {
+struct FrameOriginPreferenceKey: PreferenceKey {
     typealias Value = CGPoint
     static var defaultValue: Value = .zero
-    static func reduce(value: inout Value, nextValue: () -> Value) {
-        value = nextValue()
-    }
+    static func reduce(value: inout Value, nextValue:()->Value) { }
 }
 
 struct OriginAwareScrollView<Content:View> : View {
@@ -435,61 +432,19 @@ struct OriginAwareScrollView<Content:View> : View {
         self.onOriginChange = onOriginChange
         self.content = content()
     }
-    /*
-     var body: some View {
-         ScrollView(axes, showsIndicators: showIndicators) {
-             ZStack {
-             Text("0")
-                 .frame(maxWidth: .infinity)
-                 .background(
-                    GeometryReader { proxy in
-                        Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: proxy.frame(in: .named("foo")))
-                    })
-                 VStack(spacing: 0) {
-                 content
-                 }
-             }
-         }
-         .fixedSize(horizontal: false, vertical: true)
-         .background(.red)
-         .coordinateSpace(name: "foo")
-         .onPreferenceChange(ScrollOriginPreferenceKey.self) { value in
-             onOriginChange(value.origin)
-         }
-     }
-     */
-    /*
-     var body: some View {
-         ScrollView(axes, showsIndicators: showIndicators) {
-             ZStack {
-                 GeometryReader { geometry in
-                     Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: geometry.frame(in: .named("foo")))
-                 }.frame(width:0,height:0)
-                 VStack(spacing: 0) {
-                 content
-                 }
-             }.fixedSize(horizontal: false, vertical: true).background(.red)
-             
-         }
-         .coordinateSpace(name: "foo")
-         .onPreferenceChange(ScrollOriginPreferenceKey.self) { value in
-             onOriginChange(value.origin)
-         }
-     }
-     */
-    
     
     var body: some View {
         ScrollView(axes, showsIndicators: showIndicators) {
             VStack(spacing: 0) {
                 GeometryReader { geometry in
-                    Color.clear.preference(key: ScrollOriginPreferenceKey.self, value: geometry.frame(in: .named("name")))
+                    Color.clear.preference(key: FrameOriginPreferenceKey.self, value:
+                                            geometry.frame(in: .named(name)).origin)
                 }.frame(width:0,height:0)
                 content
             }.fixedSize(horizontal: false, vertical: true).background(.red)
         }
-        .onPreferenceChange(ScrollOriginPreferenceKey.self) { value in
-            onOriginChange(value.origin)
+        .onPreferenceChange(FrameOriginPreferenceKey.self) { value in
+            onOriginChange(value)
         }
     }
      

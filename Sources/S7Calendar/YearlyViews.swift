@@ -4,7 +4,6 @@ import SwiftUI
 public struct WrappedYearlyView : View {
     
     let yearlyView: YearlyView
-    let uuid: UUID
 
     @ObservedObject var model: YearlyViewModel
     @ObservedObject var cModel: CalendarModel
@@ -13,7 +12,6 @@ public struct WrappedYearlyView : View {
     
     public init(_ cModel: CalendarModel, _ toSelect: Int) {
         yearlyView = cModel.yearlyView!
-        self.uuid = yearlyView.uuid
         self.model = yearlyView.model
         self.cModel = cModel
         self.toSelect = toSelect
@@ -38,14 +36,6 @@ public struct WrappedYearlyView : View {
 
 @available(iOS 15.0, *)
 public struct YearlyView: View, CalendarView {
-
-    var _uuid = UUID.init()
-    
-    public var uuid: UUID {
-        get {
-            _uuid
-        }
-    }
     
     public var calendarModel: CalendarModel {
         get {

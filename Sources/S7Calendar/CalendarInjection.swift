@@ -4,7 +4,6 @@ import Combine
 
 
 public protocol CalendarView {
-    var uuid: UUID { get }
     var calendarModel: CalendarModel { get }
     var viewModel: CalendarViewModel { get }
 }
@@ -263,36 +262,6 @@ public class CalendarModel : ObservableObject {
         self.cellBuilder = config.cellBuilder
         self.config = config
         self._colors = DefaultCalendarColors()
-    }
-    
-    
-    @ViewBuilder
-    public func buildInitialView() -> some View {
-        if let yearlyView = yearlyView {
-            WrappedYearlyView(self, yearlyView.getIdForToday())
-                .onAppear {
-                    self.yearlyViewVisible = true
-                }
-                .onDisappear {
-                    self.yearlyViewVisible = false
-                }
-        } else if let monthsView = monthsView {
-            WrappedMonthsView(self, monthsView.getIdForToday())
-                .onAppear {
-                    self.monthsViewVisible = true
-                }
-                .onDisappear {
-                    self.monthsViewVisible = false
-                }
-        } else if let weekView = weekView {
-            weekView
-                .onAppear {
-                    self.weekViewVisible = true
-                }
-                .onDisappear {
-                    self.weekViewVisible = false 
-                }
-        }
     }
     
     @MainActor
